@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 262.33694, g: 325.04984, b: 430.2193, a: 1}
+  m_IndirectSpecularColor: {r: 261.89923, g: 324.44937, b: 429.42596, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -24507,7 +24507,7 @@ MonoBehaviour:
     lighting:
       multiplier: 1
       weight: 1
-      lightLayer: 255
+      lightLayer: 1
       fadeDistance: 10000
       rangeCompressionFactor: 1
     influence:
@@ -24553,7 +24553,7 @@ MonoBehaviour:
       m_Level: 0
     resolution: 0
     cubeResolution:
-      m_Override: 512
+      m_Override: 1024
       m_UseOverride: 0
       m_Level: 2
     cameraSettings:
@@ -24668,7 +24668,7 @@ MonoBehaviour:
           enableBigTilePrepass: 0
           isFptlEnabled: 0
     roughReflections: 1
-    distanceBasedRoughness: 0
+    distanceBasedRoughness: 1
   m_ProbeSettingsOverride:
     probe: 0
     camera:
@@ -24931,7 +24931,7 @@ Transform:
   m_GameObject: {fileID: 1350305429}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 49.81}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -24966,6 +24966,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1385573992}
   - component: {fileID: 1385573991}
+  - component: {fileID: 1385573993}
   m_Layer: 0
   m_Name: GameObject (1)
   m_TagString: Untagged
@@ -24989,7 +24990,7 @@ MonoBehaviour:
   priority: 0
   blendDistance: 0
   weight: 1
-  sharedProfile: {fileID: 11400000, guid: 93e2a7e017535284bafbc0e555e5e192, type: 2}
+  sharedProfile: {fileID: 11400000, guid: 43d878a25b9352c459d7645f384b51c2, type: 2}
 --- !u!4 &1385573992
 Transform:
   m_ObjectHideFlags: 0
@@ -25005,6 +25006,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1385573993
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1385573990}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8549fc3ca2b60fa4b84c476f5c79dfa3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cam: {fileID: 1258107699}
+  rendTex: {fileID: 8400000, guid: 5d75503f4b57db14f9dccbd3c3fb1caf, type: 2}
+  equirectTex: {fileID: 8400000, guid: 2564f8864d7352d49a391c483365bad0, type: 2}
+  path: C:\github_repo\Project-Beat-3D\Assets\Gameplay\City\Skybox\1.png
 --- !u!1 &1426848186
 GameObject:
   m_ObjectHideFlags: 19
