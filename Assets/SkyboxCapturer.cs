@@ -6,12 +6,10 @@ public class SkyboxCapturer : MonoBehaviour
 {
     public Camera cam;
     public RenderTexture rendTex, equirectTex;
-    public string path;
 
     // Start is called before the first frame update
     void Start()
-    {
-        
+    { 
         Capture();
     }
     void Capture()
@@ -23,6 +21,7 @@ public class SkyboxCapturer : MonoBehaviour
 [ContextMenu("Save")]
     void Save()
     {
+        string path = Application.dataPath + "/cubemap.png";
         RenderTexture rendTex = equirectTex;
         Texture2D text = new Texture2D(equirectTex.width, equirectTex.height);
         RenderTexture.active = equirectTex;
