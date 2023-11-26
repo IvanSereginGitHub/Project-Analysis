@@ -18,6 +18,15 @@ public class SkyboxCamera : MonoBehaviour
     {
         _cam = gameObject.GetComponent<Camera>();
     }
+
+    public void SetSettings(float skyScale, Vector3 posOffset, Vector3 rotOffset, bool affFOV, float FOVScale)
+    {
+        skyboxScale = skyScale;
+        cameraPositionOffset = posOffset;
+        cameraRotationOffset = rotOffset;
+        affectFOV = affFOV;
+        skyboxFOVScale = FOVScale;
+    }
     private void Update()
     {
         if (playerCamera == null)

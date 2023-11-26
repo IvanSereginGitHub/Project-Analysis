@@ -1,11 +1,14 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Numerics;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using PathCreation;
+using PathCreation.Examples;
 
 [System.Serializable]
 class SongTimeEvent<T>
@@ -29,8 +32,61 @@ public class AudioManager : MonoBehaviour
     AudioSource audSource;
     public float intensityTimeDelta = 1f;
     public float gameplayChangeTimeDelta = 1f;
+    public float sensitivity = 0.2f;
+    public int samplesPerThread = 10000;
+    private ConcurrentQueue<string> logMessages = new ConcurrentQueue<string>();
+    public PathCreator pathCreator;
+    public RoadMeshCreator roadMeshCreator;
+    public int pathCreatorPointsOffset = 50;
+    public float pathCreatorPointsMultiplier = 0.5f;
+    public float pathCreatorTurnTreshold = 50f;
+    public float pathCreatorPointsDistance = 10f;
+    void ScanForSegments(float[] songSamples)
+    {
+        float average = 0;
+        for (int i = 0; i < songSamples.Length; i++)
+        {
+            average += Mathf.Abs(songSamples[i]);
+        }
+        average /= songSamples.Length;
 
-    public
+        float diff = average + sensitivity;
+        Debug.Log("done");
+        // int numThreads = songSamples.Length / samplesPerThread;
+        // int numThreads = 5;
+
+        // for (int t = 0; t <= numThreads; t++)
+        // {
+        //     int start = t * samplesPerThread;
+        //     int end = start + samplesPerThread;
+        //     if (end >= songSamples.Length)
+        //     {
+        //         end = songSamples.Length;
+        //     }
+        //     Task task = new Task(() =>
+        //     {
+        //         for (int i = start; i < end; i++)
+        //         {
+        //             if (Mathf.Abs(songSamples[i]) > diff)
+        //             {
+        //                 logMessages.Enqueue("Significant volume change detected at sample " + i);
+        //             }
+        //         }
+        //     });
+        //     task.Start();
+        // }
+        // for (int i = 0; i < songSamples.Length; i++)
+        // {
+        //     Debug.LogObjects(i, songSamples.Length, (float)i / songSamples.Length);
+        //     float sample = Mathf.Abs(songSamples[i]);
+        //     if (sample > diff)
+        //     {
+        //         Debug.Log("Significant volume change detected at sample " + i);
+        //     }
+        //     yield return null;
+        // }
+        // Debug.Log("done2");
+    }
     void Start()
     {
         if (analyzeSong)
@@ -38,6 +94,10 @@ public class AudioManager : MonoBehaviour
     }
     void Update()
     {
+        while (logMessages.TryDequeue(out string message))
+        {
+            Debug.Log(message);
+        }
         audSource.GetSpectrumData(samples, 0, FFTWindow.Blackman);
         songTimeText.text = audSource.time.ToString();
     }
@@ -82,6 +142,7 @@ public class AudioManager : MonoBehaviour
         Debug.Log("Started scanning the song...");
         float[] totalSamples = new float[audSource.clip.samples * audSource.clip.channels];
         audSource.clip.GetData(totalSamples, 0);
+        // ScanForSegments(totalSamples);
         List<double[]> allProcessedSamples = new List<double[]>();
         for (int i = 0; i < totalSamples.Length; i += samplesAmountPerScan)
         {
@@ -90,7 +151,7 @@ public class AudioManager : MonoBehaviour
             {
                 samplesArr[j - i] = totalSamples[j];
             }
-            Complex[] complexes = FastFourierTransform.ConvertFloatToComplex(samplesArr);
+            System.Numerics.Complex[] complexes = FastFourierTransform.ConvertFloatToComplex(samplesArr);
             FastFourierTransform.FFT(complexes);
 
             double[] magnitudes = new double[complexes.Length / 2];
@@ -104,20 +165,43 @@ public class AudioManager : MonoBehaviour
         Debug.Log(allProcessedSamples.Count);
 
         sw.Stop();
-
-        List<double> spectrumFlux = new List<double>();
-
-        for (int i = 0; i < allProcessedSamples.Count - 1; i++)
+        Vector3 pathPoint = new Vector3(0, 0, 0);
+        pathCreator.EditorData.ResetBezierPath(pathPoint);
+        for (int i = 0; i < allProcessedSamples.Count; i += pathCreatorPointsOffset)
         {
-            spectrumFlux.Add(GetSpectrumFluxValue(allProcessedSamples[i], allProcessedSamples[i + 1]));
+            float avg = (float)allProcessedSamples[i].Average();
+            if (avg - pathCreatorTurnTreshold <= 0)
+            {
+                avg = 0;
+            }
+            else
+            {
+                avg -= pathCreatorTurnTreshold;
+            }
+
+            pathPoint += pathCreatorPointsMultiplier * new Vector3(avg, 0, pathCreatorPointsDistance);
+            Debug.Log(pathPoint);
+            // pathCreator.bezierPath.SetPoint(i, pathPoint);
+            // pathCreator.bezierPath.SetAnchorNormalAngle(i, 0f);
+            pathCreator.bezierPath.AddSegmentToEnd(pathPoint);
+
         }
-        List<float> detectedIntesityChanges = DetectIntensityChanges(spectrumFlux, 5, totalSamples.Length);
-        Debug.LogObjects("Time elapsed:", sw.ElapsedMilliseconds, "milliseconds");
-        Debug.LogObjects(allProcessedSamples.Count, spectrumFlux.Count, detectedIntesityChanges.Count);
-        for (int i = 0; i < detectedIntesityChanges.Count; i++)
-        {
-            Debug.Log(detectedIntesityChanges[i]);
-        }
+        pathCreator.bezierPath.ControlPointMode = BezierPath.ControlMode.Automatic;
+        roadMeshCreator.TriggerUpdate();
+        Debug.Log(pathCreator.bezierPath.NumPoints);
+        // List<double> spectrumFlux = new List<double>();
+
+        // for (int i = 0; i < allProcessedSamples.Count - 1; i++)
+        // {
+        //     spectrumFlux.Add(GetSpectrumFluxValue(allProcessedSamples[i], allProcessedSamples[i + 1]));
+        // }
+        // List<float> detectedIntesityChanges = DetectIntensityChanges(spectrumFlux, 5, totalSamples.Length);
+        // Debug.LogObjects("Time elapsed:", sw.ElapsedMilliseconds, "milliseconds");
+        // Debug.LogObjects(allProcessedSamples.Count, spectrumFlux.Count, detectedIntesityChanges.Count);
+        // for (int i = 0; i < detectedIntesityChanges.Count; i++)
+        // {
+        //     Debug.Log(detectedIntesityChanges[i]);
+        // }
         // // gameplay changes
         // for (int i = 0; i < allProcessedSamples.Count; i++)
         // {

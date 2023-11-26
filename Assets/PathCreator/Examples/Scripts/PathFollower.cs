@@ -8,6 +8,7 @@ namespace PathCreation.Examples
     {
         public PathCreator pathCreator;
         public EndOfPathInstruction endOfPathInstruction;
+        public Vector3 rotationOffset;
         public float speed = 5;
 
         public bool followRotation;
@@ -29,7 +30,11 @@ namespace PathCreation.Examples
                 distanceTravelled += speed * Time.deltaTime;
                 transform.position = pathCreator.path.GetPointAtDistance(distanceTravelled, endOfPathInstruction);
                 if (followRotation)
+                {
                     transform.rotation = pathCreator.path.GetRotationAtDistance(distanceTravelled, endOfPathInstruction);
+                    transform.localEulerAngles += rotationOffset;
+                }
+
             }
         }
 
