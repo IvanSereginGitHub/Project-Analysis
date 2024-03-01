@@ -29,7 +29,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField]
     TextMeshProUGUI songTimeText;
     [SerializeField]
-    AudioSource audSource;
+    public AudioSource audSource;
     public float intensityTimeDelta = 1f;
     public float gameplayChangeTimeDelta = 1f;
     public float sensitivity = 0.2f;
@@ -87,10 +87,14 @@ public class AudioManager : MonoBehaviour
         // }
         // Debug.Log("done2");
     }
-    void Start()
+    void Awake()
     {
         if (analyzeSong)
             StartCoroutine(ScanSong());
+    }
+
+    public void ChangeSongPos(float multiplier) {
+        audSource.time = audSource.clip.length * multiplier;
     }
     void Update()
     {
@@ -120,6 +124,14 @@ public class AudioManager : MonoBehaviour
         return sum;
     }
 
+    BezierPath GeneratePath(Vector3[] points, bool closedPath)
+    {
+        // Create a closed, 2D bezier path from the supplied points array
+        // These points are treated as anchors, which the path will pass through
+        // The control points for the path will be generated automatically
+        return new BezierPath(points, closedPath, PathSpace.xyz);
+    }
+
     public List<float> DetectIntensityChanges(List<double> spectralFlux, double changeThreshold, int totalSamplesLength)
     {
         List<float> detectedSeconds = new List<float>();
@@ -135,7 +147,13 @@ public class AudioManager : MonoBehaviour
         }
         return detectedSeconds;
     }
-
+    List<Vector3> points = new List<Vector3>();
+    public (int, Vector3) GetNextPosition()
+    {
+        float time = audSource.time / audSource.clip.length;
+        int i = Mathf.FloorToInt(time * (points.Count - 1));
+        return (i, points[i + 1]);
+    }
     IEnumerator ScanSong()
     {
         var sw = Stopwatch.StartNew();
@@ -165,30 +183,28 @@ public class AudioManager : MonoBehaviour
         Debug.Log(allProcessedSamples.Count);
 
         sw.Stop();
-        Vector3 pathPoint = new Vector3(0, 0, 0);
-        pathCreator.EditorData.ResetBezierPath(pathPoint);
         for (int i = 0; i < allProcessedSamples.Count; i += pathCreatorPointsOffset)
         {
-            float avg = (float)allProcessedSamples[i].Average();
-            if (avg - pathCreatorTurnTreshold <= 0)
-            {
-                avg = 0;
-            }
-            else
-            {
-                avg -= pathCreatorTurnTreshold;
-            }
-
-            pathPoint += pathCreatorPointsMultiplier * new Vector3(avg, 0, pathCreatorPointsDistance);
-            Debug.Log(pathPoint);
-            // pathCreator.bezierPath.SetPoint(i, pathPoint);
-            // pathCreator.bezierPath.SetAnchorNormalAngle(i, 0f);
-            pathCreator.bezierPath.AddSegmentToEnd(pathPoint);
-
+            // float avg = (float)allProcessedSamples[i].Average();
+            // if (avg - pathCreatorTurnTreshold <= 0)
+            // {
+            //     avg = 0;
+            // }
+            // else
+            // {
+            //     avg -= pathCreatorTurnTreshold;
+            // }
+            float timeInSeconds = audSource.clip.length * ((float)(i * samplesAmountPerScan) / totalSamples.Length);
+            Vector3 pathPoint = pathCreatorPointsMultiplier * new Vector3(0, 0, timeInSeconds);
+            // Instantiate(point, pathPoint, Quaternion.identity);
+            points.Add(pathPoint);
+            Debug.LogObjects(pathPoint, timeInSeconds);
         }
-        pathCreator.bezierPath.ControlPointMode = BezierPath.ControlMode.Automatic;
-        roadMeshCreator.TriggerUpdate();
-        Debug.Log(pathCreator.bezierPath.NumPoints);
+        // pathCreator.bezierPath = GeneratePath(points.ToArray(), false);
+        // pathCreator.bezierPath.ControlPointMode = BezierPath.ControlMode.Automatic;
+        // roadMeshCreator.TriggerUpdate();
+        // Debug.Log(pathCreator.bezierPath.NumPoints);
+        audSource.Play();
         // List<double> spectrumFlux = new List<double>();
 
         // for (int i = 0; i < allProcessedSamples.Count - 1; i++)

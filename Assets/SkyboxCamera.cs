@@ -1,17 +1,28 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
+[System.Serializable]
+public class SkyboxSettings
+{
+    public string skyboxName;
+    public float skyboxScale;
+    public Vector3 cameraPositionOffset;
+    public Vector3 cameraRotationOffset;
+    public bool moveByRotation;
+    public bool affectFOV;
+    public float skyboxFOVScale = 1f;
+}
 
 public class SkyboxCamera : MonoBehaviour
 {
     [SerializeField] private Camera playerCamera;
-    [SerializeField] private float skyboxScale;
+
+    public SkyboxSettings skyboxSettings;
 
     Camera _cam;
-    public Vector3 cameraPositionOffset;
-    public Vector3 cameraRotationOffset;
-    public bool affectFOV;
-    public float skyboxFOVScale = 1f;
+
+    Vector3? lastPos = null;
 
 
     void Start()
@@ -19,13 +30,10 @@ public class SkyboxCamera : MonoBehaviour
         _cam = gameObject.GetComponent<Camera>();
     }
 
-    public void SetSettings(float skyScale, Vector3 posOffset, Vector3 rotOffset, bool affFOV, float FOVScale)
+    public void SetSettings(SkyboxSettings settings)
     {
-        skyboxScale = skyScale;
-        cameraPositionOffset = posOffset;
-        cameraRotationOffset = rotOffset;
-        affectFOV = affFOV;
-        skyboxFOVScale = FOVScale;
+        GameObject sky = Instantiate(Resources.Load<GameObject>(Path.Combine("Skyboxes", settings.skyboxName)));
+        skyboxSettings = settings;
     }
     private void Update()
     {
@@ -33,11 +41,12 @@ public class SkyboxCamera : MonoBehaviour
         {
             playerCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
         }
-        transform.localEulerAngles = cameraRotationOffset + playerCamera.transform.localEulerAngles;
-        transform.localPosition = cameraPositionOffset + playerCamera.transform.position / skyboxScale;
-        if (affectFOV)
+        transform.localEulerAngles = skyboxSettings.cameraRotationOffset + playerCamera.transform.localEulerAngles;
+
+        transform.localPosition = skyboxSettings.cameraPositionOffset + playerCamera.transform.position / skyboxSettings.skyboxScale;
+        if (skyboxSettings.affectFOV)
         {
-            _cam.fieldOfView = playerCamera.fieldOfView * skyboxFOVScale;
+            _cam.fieldOfView = playerCamera.fieldOfView * skyboxSettings.skyboxFOVScale;
         }
 
     }

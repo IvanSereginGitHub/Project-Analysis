@@ -107,6 +107,7 @@ public class Prompts : MonoBehaviour
 
     public static void ClosePrompt(GameObject promptPanel)
     {
+        Debug.LogObjects("closing", promptPanel.name);
         // This is a temporary solution, must find a root of problem
         if (promptPanel)
             promptPanel.GetComponent<Animator>().Play("ClosePromptAnim");
@@ -304,6 +305,9 @@ public class Prompts : MonoBehaviour
 
         if (prompt.closingTime != 0f)
         {
+            Debug.Log(instance);
+            Debug.Log(panel);
+            Debug.Log(prompt);
             instance.StartCoroutine(ClosePromptAfter(panel, prompt.closingTime));
         }
     }

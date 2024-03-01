@@ -134,6 +134,12 @@ public static class Extensions
     prompt.associatedPrefab = null;
   }
 
+
+  public static bool IsNearlyEqualTo(this float a, float b, float margin)
+  {
+    return Math.Abs(a - b) < margin;
+  }
+
   public static Color OverwriteOpacity(this Color col, float val)
   {
     return new Color(col.r, col.g, col.b, val);
