@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,6 +24,8 @@ public class AudioAnalyzer : MonoBehaviour
   public float quitePartsThreshold = 0.1f;
   int segmentsSampleLength = 16384;
   public float segmenterDifferenceThreshold = 0.3f;
+  //How many additional segments from right are required to calculate average?
+  public int segmenterSmoothingWindowSize = 3;
 
   [SerializeField]
   Transform segmentPrefabParent;
@@ -80,15 +83,35 @@ public class AudioAnalyzer : MonoBehaviour
     float? previousAverage = null;
     for (int i = 0; i < totalSamples.Length; i += segmentsSampleLength)
     {
-      IEnumerable<float> sub_arr = totalSamples.Skip(i).Take(segmentsSampleLength);
-      float average = useAverageInsteadOfMax ? sub_arr.Average() : sub_arr.Max();
-      int time_ind = i + sub_arr.ToList().IndexOf(average);
+      List<float> arr = totalSamples.Skip(i).Take(segmentsSampleLength * (segmenterSmoothingWindowSize + 1)).ToList();
+      //Smooth the volume difference throughout the segment to exclude sudden spikes
+      // float average = sub_arr.Max();
+      // float smoothedWindowAverage = average;
+      float sum = 0;
+      int count = 0;
+      List<float> values = new List<float>();
+      int time_ind = i /*+ arr.IndexOf(average)*/;
+      for (int j = 0; j <= segmenterSmoothingWindowSize; j++)
+      {
+        IEnumerable<float> sub_arr = arr.Skip(j * segmentsSampleLength).Take(segmentsSampleLength);
+        if (sub_arr.Count() < 1)
+          continue;
+        values.Add(sub_arr.Max());
+        sum += sub_arr.Max();
+        count++;
+      }
+
+      Debug.LogList(values);
+      float average = sum / count;
+
       if (previousAverage != null)
       {
         float approx_time = ConvertSampleIndexToTime(time_ind, totalSamples.Length, clipLength);
+        Debug.LogObjects(approx_time, Debug.ListToString(values), average);
         if (Math.Abs(previousAverage.Value - average) > segmenterDifferenceThreshold)
         {
           min_times.Add(approx_time);
+          i += segmenterSmoothingWindowSize * segmentsSampleLength;
         }
       }
       previousAverage = average;
@@ -107,14 +130,14 @@ public class AudioAnalyzer : MonoBehaviour
       temp.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = segments[i].ToString();
       temp.transform.GetChild(1).GetComponent<Button>().onClick.AddListener(delegate { audSource.Stop(); audSource.time = time; audSource.Play(); });
     }
-    Debug.LogList(GetSegments());
+    // Debug.LogList(GetSegments());
   }
-  int ConvertTimeToSampleIndex(float time, int totalSamplesLength, float totalTime)
+  public static int ConvertTimeToSampleIndex(float time, int totalSamplesLength, float totalTime)
   {
     return (int)(time / totalTime * totalSamplesLength);
   }
 
-  float ConvertSampleIndexToTime(int ind, int totalSamplesLength, float totalTime)
+  public static float ConvertSampleIndexToTime(int ind, int totalSamplesLength, float totalTime)
   {
     return totalTime * ((float)ind / totalSamplesLength);
   }
@@ -245,6 +268,11 @@ public class AudioAnalyzer : MonoBehaviour
     segmenterDifferenceThreshold = Convert.ToSingle(val);
   }
 
+  public void ChangeSegmenterWindowSize(string val)
+  {
+    segmenterSmoothingWindowSize = Convert.ToInt32(val);
+  }
+
   public void AnalyzeSongSegmentsPos(float[] totalSamples, float clipLength)
   {
     segments.Clear();
@@ -254,14 +282,23 @@ public class AudioAnalyzer : MonoBehaviour
     }
     DoSongSegmentation(totalSamples, clipLength);
   }
+
   public void AnalyzeSong()
   {
-    foreach (Transform child in listPrefabParent)
-    {
-      Destroy(child.gameObject);
-    }
+    AnalyzeSong(null);
+  }
+  public void AnalyzeSong(float[] totalSamples = null)
+  {
+    spectrumsList.Clear();
+    // foreach (Transform child in listPrefabParent)
+    // {
+    //   Destroy(child.gameObject);
+    // }
     float clipLength = audSource.clip.length;
-    float[] totalSamples = GetTotalSamples();
+    if (totalSamples == null)
+    {
+      totalSamples = GetTotalSamples();
+    }
     //TODO: Multithreading to speed it up
     for (int i = 0; i < totalSamples.Length; i += sampleRate)
     {
@@ -336,5 +373,56 @@ public class AudioAnalyzer : MonoBehaviour
     }
     Debug.LogObjects("Quite parts amount", times.Count);
     return times;
+  }
+
+  public Texture2D CreateSongSpectrumTexture(int width, int height, AudioClip clip = null)
+  {
+    if (clip == null)
+      clip = audSource.clip;
+
+    float[] spectrum = new float[clip.samples * clip.channels];
+    clip.GetData(spectrum, 0);
+    Texture2D finalSpectrum = new Texture2D(width, height, TextureFormat.RGBA32, false);
+
+    float[] widthRange = new float[width];
+
+    for (int x = 0; x < width; x++)
+    {
+      for (int y = 0; y < height; y++)
+      {
+        finalSpectrum.SetPixel(x, (height / 2) + y, new Color(0, 0, 0, 0));
+        finalSpectrum.SetPixel(x, (height / 2) - y, new Color(0, 0, 0, 0));
+      }
+    }
+
+    int deltaValue = spectrum.Length / width;
+    float maxValue = 0;
+    int value = 0;
+    for (int i = 0; i < width; i++)
+    {
+      for (int j = value; j < value + deltaValue; j++)
+      {
+        if (maxValue < spectrum[j])
+        {
+          maxValue = spectrum[j];
+        }
+      }
+      widthRange[i] = maxValue;
+      value += deltaValue;
+      maxValue = 0;
+    }
+
+    for (int x = 0; x < widthRange.Length; x++)
+    {
+      finalSpectrum.SetPixel(x, height / 2, Color.white);
+      for (int y = 0; y < Mathf.Abs(widthRange[x] * (height / 2)); y++)
+      {
+        finalSpectrum.SetPixel(x, (height / 2) + y, Color.white);
+        finalSpectrum.SetPixel(x, (height / 2) - y, Color.white);
+      }
+    }
+
+    finalSpectrum.Apply();
+    return finalSpectrum;
   }
 }

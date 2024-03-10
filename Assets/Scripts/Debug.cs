@@ -25,6 +25,9 @@ public class Debug : UnityEngine.Debug
   {
     UnityEngine.Debug.Log($"[{string.Join(separator, list)}] ({list.Count()})");
   }
+  public static string ListToString<T>(IEnumerable<T> list) {
+    return $"[{string.Join(separator, list)}] ({list.Count()})";
+  }
   public static void LogDictionary<K, V>(Dictionary<K, V> dictionary)
   {
     string res = "";
