@@ -22,7 +22,7 @@ public class AudioAnalyzer : MonoBehaviour
   AudioSource audSource;
   int sampleRate = 4096;
   public float quitePartsThreshold = 0.1f;
-  int segmentsSampleLength = 16384;
+  public int segmentsSampleLength = 16384;
   public float segmenterDifferenceThreshold = 0.3f;
   //How many additional segments from right are required to calculate average?
   public int segmenterSmoothingWindowSize = 3;
@@ -83,31 +83,31 @@ public class AudioAnalyzer : MonoBehaviour
     float? previousAverage = null;
     for (int i = 0; i < totalSamples.Length; i += segmentsSampleLength)
     {
-      List<float> arr = totalSamples.Skip(i).Take(segmentsSampleLength * (segmenterSmoothingWindowSize + 1)).ToList();
+      IEnumerable<float> arr = totalSamples.Skip(i).Take(segmentsSampleLength * (segmenterSmoothingWindowSize + 1));
       //Smooth the volume difference throughout the segment to exclude sudden spikes
       // float average = sub_arr.Max();
       // float smoothedWindowAverage = average;
       float sum = 0;
       int count = 0;
-      List<float> values = new List<float>();
-      int time_ind = i /*+ arr.IndexOf(average)*/;
+      //List<float> values = new List<float>();
+      //int time_ind = i /*+ arr.IndexOf(average)*/;
       for (int j = 0; j <= segmenterSmoothingWindowSize; j++)
       {
         IEnumerable<float> sub_arr = arr.Skip(j * segmentsSampleLength).Take(segmentsSampleLength);
         if (sub_arr.Count() < 1)
           continue;
-        values.Add(sub_arr.Max());
-        sum += sub_arr.Max();
+        //values.Add(sub_arr.Max());
+        sum += sub_arr.Average();
         count++;
       }
 
-      Debug.LogList(values);
+      //Debug.LogList(values);
       float average = sum / count;
 
       if (previousAverage != null)
       {
-        float approx_time = ConvertSampleIndexToTime(time_ind, totalSamples.Length, clipLength);
-        Debug.LogObjects(approx_time, Debug.ListToString(values), average);
+        float approx_time = ConvertSampleIndexToTime(i, totalSamples.Length, clipLength);
+        //Debug.LogObjects(approx_time, Debug.ListToString(values), average);
         if (Math.Abs(previousAverage.Value - average) > segmenterDifferenceThreshold)
         {
           min_times.Add(approx_time);
@@ -123,13 +123,13 @@ public class AudioAnalyzer : MonoBehaviour
   public void DoSongSegmentation(float[] totalSamples, float clipLength)
   {
     segments = SegmenterAnalyzer(totalSamples, clipLength);
-    for (int i = 0; i < segments.Count; i++)
+     for (int i = 0; i < segments.Count; i++)
     {
       float time = segments[i];
       GameObject temp = Instantiate(segmentPrefab, segmentPrefabParent);
       temp.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = segments[i].ToString();
       temp.transform.GetChild(1).GetComponent<Button>().onClick.AddListener(delegate { audSource.Stop(); audSource.time = time; audSource.Play(); });
-    }
+    } 
     // Debug.LogList(GetSegments());
   }
   public static int ConvertTimeToSampleIndex(float time, int totalSamplesLength, float totalTime)
@@ -273,6 +273,10 @@ public class AudioAnalyzer : MonoBehaviour
     segmenterSmoothingWindowSize = Convert.ToInt32(val);
   }
 
+  public void ChangeSegmenterSampleSize(string val)
+  {
+    segmentsSampleLength = Convert.ToInt32(val);
+  }
   public void AnalyzeSongSegmentsPos(float[] totalSamples, float clipLength)
   {
     segments.Clear();
@@ -306,14 +310,14 @@ public class AudioAnalyzer : MonoBehaviour
     }
     Debug.LogObjects("count", spectrumsList.Count);
     int counter = 0;
-    for (int i = 0; i < totalSamples.Length; i += sampleRate)
+ /*    for (int i = 0; i < totalSamples.Length; i += sampleRate)
     {
       StartCoroutine(ProcessSamples(counter, i, totalSamples, clipLength));
       counter++;
-    }
+    } */
     //TODO: Multithread that crap
     AnalyzeSongSegmentsPos(totalSamples, clipLength);
-    DoSongSnippetFinding(totalSamples, clipLength);
+    //DoSongSnippetFinding(totalSamples, clipLength);
   }
 
   public Texture2D GetSpectrumTexture(int width, int height, double[] spectrum_values)
