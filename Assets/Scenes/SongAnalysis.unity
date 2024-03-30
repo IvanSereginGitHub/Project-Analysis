@@ -5387,7 +5387,7 @@ MonoBehaviour:
   textureMainColor: {r: 1, g: 1, b: 1, a: 1}
   audSource: {fileID: 873673927}
   quitePartsThreshold: 0.1
-  segmentsSampleLength: 1024
+  segmentsSampleLength: 256
   segmenterDifferenceThreshold: 0.22
   segmenterSmoothingWindowSize: 8
   segmentPrefabParent: {fileID: 156909165}

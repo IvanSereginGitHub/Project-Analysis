@@ -306,14 +306,14 @@ public class MusicSelection : MonoBehaviour
     int value = 0;
     for (int i = 0; i < width; i++)
     {
-      for (int j = value; j < value + deltaValue; j++)
-      {
-        if (maxValue < spectrum[j])
-        {
-          maxValue = spectrum[j];
-        }
-      }
-      widthRange[i] = maxValue;
+      // for (int j = value; j < value + deltaValue; j++)
+      // {
+      //   if (maxValue < spectrum[j])
+      //   {
+      //     maxValue = spectrum[j];
+      //   }
+      // }
+      widthRange[i] = spectrum.Skip(value).Take(deltaValue).Select(x => Math.Abs(x)).Average();
       value += deltaValue;
       maxValue = 0;
     }
