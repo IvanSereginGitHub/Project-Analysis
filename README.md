@@ -2,13 +2,17 @@
 Project Beat is a crossplatform tool for analyzing different properties of audiofiles and exporting them.
 
 > [!CAUTION]
-> This tool **DEPENDS** on another tool called "Prompts" and because of the certain reasons I've decided to separate it from any other projects into it's own.
+> This tool is by default integrated with another tool called "Prompts" for advanced UI interactions.
+> 
 > This repository **DOES NOT** contain it. See [Prompts](https://github.com/IvanSereginGitHub/Prompts) for more info.
 
-> [!WARNING]
+ 
+See [this branch](https://github.com/IvanSereginGitHub/Project-Beat-3D/tree/prompts-less) for version without integration. Most features of main branch would not be available.
+
+> [!IMPORTANT]
 > While analysis itself is indeed crossplatform (and only file format depending), as well as Unity Runtime module (which runs this tool) - you would need to install platform-specific file browsers and modify existing file "SelectFiles.cs" in order to search, add to local folder or simply read audiofiles via native platform browser.
 > 
-> If you don't want to bother with that, check following:
+> If you don't want to bother with that, do the following:
 > * Place audiofiles in the platform-specific folder, described in the [Unity Documentation](https://docs.unity3d.com/ScriptReference/Application-persistentDataPath.html)
 > * Check if said directory contains /files directory after launching this tool.
 
@@ -16,7 +20,7 @@ Project Beat is a crossplatform tool for analyzing different properties of audio
 # How to install
 * Download Unity 2022.3.20f1
 
-Any other version might work, but I personally don't recommend using any version below 2020
+Any other version might work, but I personally don't recommend using any version below Unity 2020 LTS
 * Download this tool via `Code > Download Zip`
   * (or directly via `git clone https://github.com/IvanSereginGitHub/Project-Beat-3D`)
 * Add project to Unity Hub
