@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -7,20 +8,14 @@ public class SpectrumVizualizerManager : MonoBehaviour
 {
     public GameObject prefab;
     public Transform prefParent, prefParent2;
-    [SerializeField]
-    AudioSource audSource;
-    [SerializeField]
-    int beatCount = 64;
-    [SerializeField]
-    int changeIndexBy = 0;
-    [SerializeField]
-    float changeIndexTime = 0;
-    [SerializeField]
-    float sizeMultiplier = 1, defaultWidthMultiplier = 1, endPosition, startPosition;
-    float distance;
+    public AudioSource audSource;
+    public int beatCount = 64;
+    public int changeIndexBy = 0;
+    public float changeIndexTime = 0;
+    public float sizeMultiplier = 1, defaultWidthMultiplier = 1, endPosition, startPosition;
+    public float distance;
     float[] samples = new float[1024];
-    [SerializeField]
-    bool activateByStart = false;
+    public bool activateByStart = false;
     int indexChangeCount = 0;
     float time = 0;
     public enum spectrumType
@@ -36,7 +31,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
     {
         if (activateByStart)
         {
-            distance = endPosition / (float)beatCount;
+            distance = Math.Abs(startPosition - endPosition) / beatCount;
             ClearArray();
             FillArray();
             DrawSpectrum();
@@ -60,7 +55,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
                 for (int i = 0; i < objects.Length; i++)
                 {
                     objects[i] = Instantiate(prefab, prefParent);
-                    objects[i].transform.localPosition = new Vector3(distance * i, 0, 0);
+                    objects[i].transform.localPosition = new Vector3(startPosition + distance * i, 0, 0);
                 }
                 break;
             case spectrumType.Circle:
@@ -80,7 +75,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
 
                     var spawnPos = point + spawnDir * radius;
 
-                    objects[i] = Instantiate(prefab,prefParent);
+                    objects[i] = Instantiate(prefab, prefParent);
                     objects[i].transform.localPosition = spawnPos;
                     objects[i].transform.localEulerAngles = new Vector3(0, 0, 90f + 360f * ((float)i / (float)objects.Length));
                 }
@@ -93,11 +88,11 @@ public class SpectrumVizualizerManager : MonoBehaviour
     private void Update()
     {
         time += Time.deltaTime;
-        if(beatCount == 0)
-          return;
+        if (beatCount == 0)
+            return;
         if (time > changeIndexTime)
         {
-            indexChangeCount+=changeIndexBy;
+            indexChangeCount += changeIndexBy;
             if (indexChangeCount > 1024 || indexChangeCount < 0)
             {
                 indexChangeCount = 0;
@@ -105,18 +100,20 @@ public class SpectrumVizualizerManager : MonoBehaviour
             time = 0;
         }
         audSource.GetSpectrumData(samples, 0, FFTWindow.Blackman);
-        distance = endPosition / (float)beatCount;
+        distance = Math.Abs(startPosition - endPosition) / beatCount;
         DrawSpectrum();
     }
-
+    float AverageFromSamplesRange(int start, int length) {
+        return samples.Skip(start).Take(length).Average();
+    }
     void DrawSpectrum()
     {
         for (int i = 0; i < objects.Length; i++)
         {
-            int countMultiplier = (1024 / beatCount);
+            int countMultiplier = 1024 / beatCount;
             //objects[i].transform.localPosition = new Vector3(distance * i, 0, 0);
             int index = i * countMultiplier;
-            objects[i].transform.localScale = new Vector3((0.1f * defaultWidthMultiplier) * countMultiplier, sizeMultiplier * samples[index], 0);
+            objects[i].transform.localScale = new Vector3(0.1f * defaultWidthMultiplier * countMultiplier, sizeMultiplier * AverageFromSamplesRange(countMultiplier * i,countMultiplier), 0);
         }
     }
 
@@ -128,7 +125,6 @@ public class SpectrumVizualizerManager : MonoBehaviour
             return;
         }
         beatCount = (int)Mathf.Pow(2, 5 + val);
-        distance = endPosition / (float)beatCount;
         ClearArray();
         FillArray();
         DrawSpectrum();

@@ -22,8 +22,10 @@ public class Prompt
 
     public string okName = "OK", cancelName = "Cancel";
     public string promptText = "";
+    /// <summary>
+    /// A specific structure for instantiating and configuring prepared objects.
+    /// </summary>
     public List<IEventInterface> additionalObjects = new List<IEventInterface>();
-    public List<GameObject> additionalUIElements = new List<GameObject>();
     //public enum PromptType
     //{
     //    Normal,
@@ -34,6 +36,13 @@ public class Prompt
     public PromptType promptType = PromptType.Normal;
     public float openingTime = 0, closingTime = 0;
     public bool closeOnBgClick = true;
+    /// <summary>
+    /// Keeps prompt panel alive for later usage. 
+    /// </summary>
+    public bool keepAlive = false;
+    /// <summary>
+    /// Contains generated panel. Don't know why I did call it like that :/
+    /// </summary>
     public GameObject associatedPrefab;
     public void ResetActions()
     {
@@ -107,10 +116,14 @@ public class Prompts : MonoBehaviour
 
     public static void ClosePrompt(GameObject promptPanel)
     {
-        Debug.LogObjects("closing", promptPanel.name);
         // This is a temporary solution, must find a root of problem
         if (promptPanel)
             promptPanel.GetComponent<Animator>().Play("ClosePromptAnim");
+    }
+
+    public static void DestroyPrompt(GameObject promptPanel)
+    {
+        Destroy(promptPanel);
     }
 
     public static Prompt QuickPrompt(string text)
@@ -163,7 +176,11 @@ public class Prompts : MonoBehaviour
         };
         prompt.Show();
     }
-
+    /// <summary>
+    /// Generates a prompt panel with several custom objects, specified in events
+    /// </summary>
+    /// <param name="events"></param>
+    /// <returns></returns>
     public static Prompt QuickAltSettingsPrompt(List<IEventInterface> events)
     {
         Prompt prompt = new Prompt
@@ -175,7 +192,12 @@ public class Prompts : MonoBehaviour
         prompt.Show();
         return prompt;
     }
-
+    /// <summary>
+    /// Generates a prompt panel with several custom objects, specified in events
+    /// </summary>
+    /// <param name="headerText"></param>
+    /// <param name="events"></param>
+    /// <returns></returns>
     public static Prompt QuickAltSettingsPrompt(string headerText, List<IEventInterface> events)
     {
         Prompt prompt = new Prompt
@@ -196,15 +218,55 @@ public class Prompts : MonoBehaviour
         prompt.Show();
         return prompt;
     }
-
-    public static void ShowPrompt(Prompt prompt)
+    /// <summary>
+    /// Updates some fields in prompt.<br/>Cannot modify type-specific properties and cannot recreate/remove additional objects. Destroy prompt and recreate it instead.
+    /// </summary>
+    /// <param name="prompt"></param>
+    public static void UpdatePrompt(Prompt prompt)
     {
-        if (prompt.associatedPrefab != null)
+        if (prompt.associatedPrefab == null)
         {
-            Debug.LogError("no associated prefab found");
+            Prompts.QuickStrictPrompt("Prompts error: You are trying to update uninitialized prompt. Call PreparePrompt first.");
             return;
         }
-        //Now does not rely on instance prefab and can be called whenever you can
+        PromptPanel promptPanel = prompt.associatedPrefab.GetComponent<PromptPanel>();
+        Button _ok = promptPanel.ok_button, _cancel = promptPanel.cancel_button, _exit = promptPanel.close_button;
+        TextMeshProUGUI _promptText = promptPanel.promptText;
+
+        promptPanel.keepAlive = prompt.keepAlive;
+        promptPanel.transform.GetChild(0).gameObject.GetComponent<Button>().enabled = prompt.closeOnBgClick;
+
+        if (prompt.ok_action != null)
+        {
+            _ok.onClick.RemoveAllListeners();
+            _ok.onClick.AddListener(delegate { prompt.ok_action(); });
+        }
+        if (prompt.cancel_action != null)
+        {
+            _cancel.onClick.RemoveAllListeners();
+            _cancel.onClick.AddListener(delegate { prompt.cancel_action(); });
+        }
+
+        if (prompt.close_action != null)
+        {
+            _exit.onClick.RemoveAllListeners();
+            _exit.onClick.AddListener(delegate { prompt.close_action(); });
+            promptPanel.transform.GetChild(0).gameObject.GetComponent<Button>().onClick.RemoveAllListeners();
+            promptPanel.transform.GetChild(0).gameObject.GetComponent<Button>().onClick.AddListener(delegate { prompt.close_action(); });
+        }
+
+        _promptText.text = prompt.promptText;
+
+        _ok.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = prompt.okName;
+        _cancel.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = prompt.cancelName;
+    }
+    /// <summary>
+    /// Loads panel and any other parameters, specified in prompt.<br/>Triggered by default when calling prompt.Show() if prompt.associatedPrefab is null.<br/><br/>
+    /// Hint: use this method with variable prompt.keepAlive to add custom objects for panel and keep them until panel is destroyed.
+    /// </summary>
+    /// <param name="prompt"></param>
+    public static void PreparePrompt(Prompt prompt)
+    {
         if (canvasParent == null)
         {
             canvasParent = new GameObject("PromptCanvas").AddComponent<Canvas>();
@@ -225,7 +287,8 @@ public class Prompts : MonoBehaviour
         TextMeshProUGUI _promptText = promptPanel.promptText;
 
         TextResizeBehaviour _promptResizeBehaviour = promptPanel.textBehaviour;
-        prompt.associatedPrefab = panel;
+        // promptPanel.keepAlive = prompt.keepAlive;
+
         switch (prompt.promptType)
         {
             case PromptType.Normal:
@@ -251,20 +314,6 @@ public class Prompts : MonoBehaviour
                 _cancel.gameObject.SetActive(false);
                 break;
         }
-        promptPanel.transform.GetChild(0).gameObject.GetComponent<Button>().enabled = prompt.closeOnBgClick;
-
-        if (prompt.ok_action != null)
-            _ok.onClick.AddListener(delegate { prompt.ok_action(); });
-        if (prompt.cancel_action != null)
-            _cancel.onClick.AddListener(delegate { prompt.cancel_action(); });
-        if (prompt.close_action != null)
-            _exit.onClick.AddListener(delegate { prompt.close_action(); });
-
-        _promptText.text = prompt.promptText;
-
-        _ok.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = prompt.okName;
-        _cancel.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = prompt.cancelName;
-
         if (prompt.additionalObjects.Count != 0)
         {
             foreach (IEventInterface ob in prompt.additionalObjects)
@@ -293,22 +342,42 @@ public class Prompts : MonoBehaviour
                 }
             }
         }
+        prompt.associatedPrefab = panel;
+        UpdatePrompt(prompt);
+        // promptPanel.transform.GetChild(0).gameObject.GetComponent<Button>().enabled = prompt.closeOnBgClick;
+
+        // if (prompt.ok_action != null)
+        //     _ok.onClick.AddListener(delegate { prompt.ok_action(); });
+        // if (prompt.cancel_action != null)
+        //     _cancel.onClick.AddListener(delegate { prompt.cancel_action(); });
+        // if (prompt.close_action != null)
+        //     _exit.onClick.AddListener(delegate { prompt.close_action(); });
+
+        // _promptText.text = prompt.promptText;
+
+        // _ok.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = prompt.okName;
+        // _cancel.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = prompt.cancelName;
+    }
+
+    public static void ShowPrompt(Prompt prompt)
+    {
+        if (prompt.associatedPrefab == null)
+        {
+            PreparePrompt(prompt);
+        }
 
         if (prompt.openingTime != 0f)
         {
-            instance.StartCoroutine(OpenPromptAfter(panel, prompt.openingTime));
+            instance.StartCoroutine(OpenPromptAfter(prompt.associatedPrefab, prompt.openingTime));
         }
         else
         {
-            panel.SetActive(true);
+            prompt.associatedPrefab.SetActive(true);
         }
 
         if (prompt.closingTime != 0f)
         {
-            Debug.Log(instance);
-            Debug.Log(panel);
-            Debug.Log(prompt);
-            instance.StartCoroutine(ClosePromptAfter(panel, prompt.closingTime));
+            instance.StartCoroutine(ClosePromptAfter(prompt.associatedPrefab, prompt.closingTime));
         }
     }
 }

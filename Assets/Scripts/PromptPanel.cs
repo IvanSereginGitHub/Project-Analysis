@@ -9,8 +9,12 @@ public class PromptPanel : MonoBehaviour
     public TextMeshProUGUI promptText;
     public Button ok_button, cancel_button, close_button;
     public TextResizeBehaviour textBehaviour;
+    public bool keepAlive = false;
     public void DestroyThis()
     {
-        Destroy(gameObject);
+        if (!keepAlive)
+            Destroy(gameObject);
+        else 
+            gameObject.SetActive(false);
     }
 }

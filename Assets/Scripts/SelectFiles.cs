@@ -3,23 +3,25 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using System.Linq;
+using static MusicSelection;
 public class SelectFiles : MonoBehaviour
 {
+  public MusicSelection musicSelection;
   public void SelectFile()
   {
     if (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor)
     {
-      Prompts.QuickCancelOnlyPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...", out Prompt prompt);
-      StartCoroutine(Delays.DelayAction(1f, () => { SelectFileWindows(); prompt.Close(); }));
+      Prompts.QuickStrictPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...");
+      StartCoroutine(Delays.DelayAction(1f, () => { SelectFileWindows(); }));
     }
     else if (Application.platform == RuntimePlatform.Android)
     {
-      Prompts.QuickCancelOnlyPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...", out Prompt prompt);
-      StartCoroutine(Delays.DelayAction(1f, () => { SelectFileMobile(); prompt.Close(); }));
+      Prompts.QuickStrictPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...");
+      StartCoroutine(Delays.DelayAction(1f, () => { SelectFileMobile(); }));
     }
     else
     {
-      Prompts.QuickCancelOnlyPrompt($"Local song usage on this platform ({Application.platform}) <color=red><b>is not implemented</b></color>!", out _);
+      Prompts.QuickCancelOnlyPrompt($"Song reading on this platform ({Application.platform}) <color=red><b>is not implemented yet, sorry</b></color>!", out _);
     }
   }
   void PromptAfter(string[] path)
@@ -28,7 +30,8 @@ public class SelectFiles : MonoBehaviour
     Prompt prompt = new Prompt(PromptType.Normal);
     if (path.Length == 0)
     {
-      prompt.promptType = PromptType.ExitOnly;
+      prompt.promptType = PromptType.StrictPanel;
+      prompt.closingTime = 1f;
       prompt.promptText = "Nothing was selected!";
       prompt.Show();
       return;
@@ -42,7 +45,7 @@ public class SelectFiles : MonoBehaviour
       prompt.Show();
       return;
     }
-    prompt.promptText = "This song will be copied to game's local music folder.\n<color=yellow><b>Do you wish to continue?</b></color>";
+    prompt.promptText = "\n<b>Do you wish to <color=green>save selected file</color> to app's local folder for later use or <color=orange>load it directly</color>?</b>\n\n<size=50%>Song that is <color=orange>loaded</color> from non-local folder will not be shown in the song selection list and will not loaded when you launch this app again.</size>";
     prompt.ok_action = delegate
     {
       if (File.Exists(ProjectManager.GetProperPath(songsPath, songName)))
@@ -71,6 +74,7 @@ public class SelectFiles : MonoBehaviour
             if (File.Exists(ProjectManager.GetProperPath(songsPath, t + ".mp3")))
             {
               Prompts.QuickPrompt($"Song {t} was successfully copied!");
+              musicSelection.LoadSongsFromFolder();
             }
           });
         });
@@ -87,6 +91,7 @@ public class SelectFiles : MonoBehaviour
         {
           Prompt confirmSuccess = new Prompt(PromptType.StrictPanel);
           confirmSuccess.promptText = $"Song {extensionlessSongName} was successfully copied!";
+          musicSelection.LoadSongsFromFolder();
           confirmSuccess.CloseAfter(1f);
           confirmSuccess.Show();
         }
@@ -95,8 +100,12 @@ public class SelectFiles : MonoBehaviour
       prompt2.cancelName = "No";
       prompt2.Show();
     };
-    prompt.okName = "Yes";
-    prompt.cancelName = "No";
+    prompt.cancel_action = delegate
+    {
+      StartCoroutine(musicSelection.SongLoadWrapper(path[0], false, () => { Prompts.QuickStrictPrompt($"Music was loaded from selected path."); }));
+    };
+    prompt.okName = "Save";
+    prompt.cancelName = "Load";
     prompt.Show();
   }
   void SelectFileWindows()

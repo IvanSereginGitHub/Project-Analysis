@@ -1235,6 +1235,7 @@ MonoBehaviour:
   cancel_button: {fileID: 324213735222661096}
   close_button: {fileID: 324213734711244115}
   textBehaviour: {fileID: 7763304349540959921}
+  keepAlive: 0
 --- !u!223 &-6760953433378067918
 Canvas:
   m_ObjectHideFlags: 0

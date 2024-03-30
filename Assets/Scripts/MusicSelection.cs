@@ -50,7 +50,7 @@ public class MusicSelection : MonoBehaviour
   public List<string> musicNames;
   // private AudioManager audManager;
   [SerializeField]
-  private AudioSource audSource;
+  private AudioSource audSource, snippetAudSource;
   //public TextAsset readmeMusic;
   public float[] samples = new float[64];
   private float[] spectrum = new float[0];
@@ -89,8 +89,38 @@ public class MusicSelection : MonoBehaviour
   public Sprite altMusicPrefabBtnSprite;
 
   public List<Slider> gameProgressSliders;
+  public Sprite snippetSprite;
+  public GameObject snippetSpectrumPrefab;
   private void Awake()
   {
+    fadeIn = FadeInSong();
+    fadeOut = FadeOutSong();
+    controlSnippet = ControlSnippet(0, 0, null);
+
+    snippetPrompt = new Prompt(PromptType.ExitOnly);
+    snippetPrompt.keepAlive = true;
+    snippetPrompt.close_action = delegate { StopCoroutine(fadeIn); StopCoroutine(fadeOut); StopCoroutine(controlSnippet); snippetAudSource.Stop(); };
+    Prompts.PreparePrompt(snippetPrompt);
+    GameObject spectrumObj = new GameObject("img");
+    spectrumObj.transform.SetParent(snippetPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
+    RectTransform rectTr = spectrumObj.AddComponent<RectTransform>();
+    rectTr.sizeDelta = new Vector2(300, 300);
+    rectTr.localScale = new Vector3(100, 100, 100);
+    SpectrumVizualizerManager specManager = spectrumObj.AddComponent<SpectrumVizualizerManager>();
+    specManager.prefab = snippetSpectrumPrefab;
+    specManager.audSource = snippetAudSource;
+    specManager.prefParent = specManager.transform;
+    specManager.distance = 0.05f;
+    specManager.beatCount = 64;
+    specManager.sizeMultiplier = 18;
+    specManager.defaultWidthMultiplier = 0.025f;
+    specManager.endPosition = 2f;
+    specManager.startPosition = -2f;
+    specManager.activateByStart = true;
+    LayoutElement layoutElement = spectrumObj.AddComponent<LayoutElement>();
+    layoutElement.minWidth = 400;
+    layoutElement.minHeight = 200;
+
     path = Application.persistentDataPath + "/_music";
     if (!Directory.Exists(path))
     {
@@ -115,6 +145,7 @@ public class MusicSelection : MonoBehaviour
   {
     foreach (Slider t in gameProgressSliders)
     {
+      t.value = 0;
       t.maxValue = audSource.clip.length;
     }
   }
@@ -306,14 +337,14 @@ public class MusicSelection : MonoBehaviour
     int value = 0;
     for (int i = 0; i < width; i++)
     {
-      for (int j = value; j < value + deltaValue; j++)
-      {
-        if (maxValue < spectrum[j])
-        {
-          maxValue = spectrum[j];
-        }
-      }
-      widthRange[i] = maxValue;
+      // for (int j = value; j < value + deltaValue; j++)
+      // {
+      //   if (maxValue < spectrum[j])
+      //   {
+      //     maxValue = spectrum[j];
+      //   }
+      // }
+      widthRange[i] = spectrum.Skip(value).Take(deltaValue).Select(x => Math.Abs(x)).Average();
       value += deltaValue;
       maxValue = 0;
     }
@@ -469,7 +500,42 @@ public class MusicSelection : MonoBehaviour
     audSource.Play();
   }
 
-  public static IEnumerator LoadSongFromPath(string path, bool streamAudio = true, System.Action<AudioClip> callback = null)
+  public class LoadSongParameters
+  {
+    public bool streamAudio;
+    public float clipFrom;
+    public float clipTo;
+
+    public float bitrateMultiplier;
+
+    public LoadSongParameters(bool stream = true, float from = 0f, float to = 0f, float bitrate = 1000)
+    {
+      streamAudio = stream;
+      clipFrom = from;
+      clipTo = to;
+      bitrateMultiplier = bitrate;
+    }
+  }
+  // public static IEnumerator LoadFileAsSongFromPath(string path, LoadSongParameters loadParameters, System.Action<AudioClip> callback = null)
+  // {
+  //   if (Application.platform == RuntimePlatform.Android)
+  //   {
+  //     path = "file://" + path;
+  //   }
+  //   UnityWebRequest www = UnityWebRequest.Get(path);
+  //   //((DownloadHandlerAudioClip)www.downloadHandler).streamAudio = loadParameters.streamAudio;
+  //   if (loadParameters.clipTo != 0)
+  //   {
+  //     www.SetRequestHeader("Range", $"bytes={(int)(loadParameters.clipFrom * loadParameters.bitrateMultiplier)}-{(int)(loadParameters.clipTo * loadParameters.bitrateMultiplier)}");
+  //   }
+  //   Debug.Log(www.GetRequestHeader("Range"));
+  //   yield return www.SendWebRequest();
+
+  //   AudioClip myClip = DownloadHandlerAudioClip.GetContent(www);
+  //   callback.Invoke(myClip);
+  // }
+
+  public static IEnumerator LoadSongFromPath(string path, bool streamAudio = false, System.Action<AudioClip> callback = null)
   {
     if (Application.platform == RuntimePlatform.Android)
     {
@@ -477,18 +543,101 @@ public class MusicSelection : MonoBehaviour
     }
     UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(path, AudioType.MPEG);
     ((DownloadHandlerAudioClip)www.downloadHandler).streamAudio = streamAudio;
-    UnityWebRequestAsyncOperation progress = www.SendWebRequest();
-
-    while (!progress.isDone)
-    {
-      yield return null;
-    }
+    yield return www.SendWebRequest();
 
     AudioClip myClip = DownloadHandlerAudioClip.GetContent(www);
     callback.Invoke(myClip);
   }
+  public IEnumerator FadeOutSong()
+  {
+    float time = 0;
+    float currentVolume = snippetAudSource.volume;
+    while (time < 1)
+    {
+      snippetAudSource.volume = Mathf.Lerp(currentVolume, 0, time);
+      time += Time.deltaTime / 2;
+      yield return null;
+    }
+    snippetAudSource.volume = 0;
+  }
 
-  IEnumerator LoadAndApplySongFromPath(string path)
+  public IEnumerator FadeInSong()
+  {
+    float time = 0;
+    float currentVolume = snippetAudSource.volume;
+    while (time < 1)
+    {
+      snippetAudSource.volume = Mathf.Lerp(currentVolume, 1, time);
+      time += Time.deltaTime / 2;
+      yield return null;
+    }
+    snippetAudSource.volume = 1;
+  }
+
+  public IEnumerator ControlSnippet(float play_from, float play_to, Prompt invokedPrompt)
+  {
+    snippetAudSource.time = play_from;
+    snippetAudSource.volume = 0f;
+    snippetAudSource.Play();
+    yield return fadeIn;
+    while (snippetAudSource.clip.length > play_to && snippetAudSource.time < play_to)
+    {
+      yield return null;
+    }
+    yield return fadeOut;
+    snippetAudSource.Stop();
+    invokedPrompt.Close();
+  }
+  Prompt snippetPrompt;
+  IEnumerator fadeIn, fadeOut, controlSnippet;
+  public void PlaySongSnippet(string path, float snippetStart = 50f, float snippetLength = 20f)
+  {
+    StopCoroutine(fadeIn);
+    StopCoroutine(fadeOut);
+    StopCoroutine(controlSnippet);
+    fadeIn = FadeInSong();
+    fadeOut = FadeOutSong();
+    controlSnippet = ControlSnippet(snippetStart, snippetStart + snippetLength, snippetPrompt);
+    snippetAudSource.Stop();
+    StartCoroutine(LoadSongFromPath(path, true, (clip) =>
+    {
+      string coloredSongInfo = GetColoredSongNameAuthorFromFilename(Path.GetFileNameWithoutExtension(path));
+      snippetPrompt.promptText = $"Playing snippet: {coloredSongInfo}";
+
+      snippetAudSource.clip = clip;
+      Prompts.UpdatePrompt(snippetPrompt);
+      snippetPrompt.Show();
+      StartCoroutine(controlSnippet);
+      // StartCoroutine(FadeInSong());
+      // StartCoroutine(ActionAfterCoroutineWrapper(FadeOutSong(), () => { promptAudSource.Stop(); }));
+    }));
+  }
+
+
+  public void RefreshSceneInfo()
+  {
+    audSource.Stop();
+    Refresh();
+    GetAudioData();
+    foreach (SpectrumObjects t in spectrumObjects)
+    {
+      ClearSpectrum(t);
+      CreateSpectrumNew(t);
+    }
+  }
+
+  public IEnumerator SongLoadWrapper(string path, bool saveAsRecent = true, System.Action callback = null)
+  {
+    yield return LoadAndApplySongFromPath(path, saveAsRecent);
+    callback.Invoke();
+  }
+  public IEnumerator ActionAfterCoroutineWrapper(IEnumerator coroutine, System.Action callback = null)
+  {
+    yield return coroutine;
+    callback.Invoke();
+  }
+
+  public IEnumerator LoadAndApplySongFromPath(string path, bool saveAsRecent = true)
   {
     AudioClip myClip = null;
     try
@@ -549,16 +698,9 @@ public class MusicSelection : MonoBehaviour
     //audManager.offset = 0;
     audSource.clip.name = songName + "_" + author;
     //audManager.offset = 0;
-    audSource.Stop();
-    Refresh();
-    GetAudioData();
-    LoadInformation();
-    PlayerPrefs.SetString("recentMusic", path.Replace("file://", ""));
-    foreach (SpectrumObjects t in spectrumObjects)
-    {
-      ClearSpectrum(t);
-      CreateSpectrumNew(t);
-    }
+    RefreshSceneInfo();
+    if (saveAsRecent)
+      PlayerPrefs.SetString("recentMusic", path.Replace("file://", ""));
   }
   public void ClearList()
   {
@@ -634,6 +776,30 @@ public class MusicSelection : MonoBehaviour
     }
   }
 
+  public (string, string) GetSongNameAuthorFromFilename(string fileName)
+  {
+    string songName = "", author = "";
+    if (fileName.Contains("_") && !fileName.Contains(" "))
+    {
+      songName = fileName.Substring(0, fileName.IndexOf("_"));
+      author = fileName.Replace(songName + "_", "");
+    }
+    else if (fileName.Contains(" - "))
+    {
+      author = fileName.Substring(0, fileName.IndexOf(" - "));
+      songName = fileName.Replace(author + " - ", "");
+    }
+    return (songName, author);
+  }
+
+  public string GetColoredSongNameAuthorFromFilename(string fileName, string htmlColor = "#cc0000")
+  {
+    (string songName, string author) = GetSongNameAuthorFromFilename(fileName);
+    if (songName == "" && author == "")
+      return fileName;
+    return $"<color={htmlColor}>{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(songName)}</color> <color=#7d7575>by</color> <color=#c9bebe>{author}</color>";
+  }
+
   public void LoadSongsFromFolder(string searchText = "")
   {
     //StopAllCoroutines();
@@ -663,9 +829,6 @@ public class MusicSelection : MonoBehaviour
         continue;
       else
       {
-        string songName = t;
-        string author = "";
-
         GameObject prefab = Instantiate(musicPrefab, customMusicPrefabParent);
         Button songPlayBtn = prefab.transform.GetChild(0).GetChild(0).gameObject.GetComponent<Button>();
 
@@ -685,19 +848,7 @@ public class MusicSelection : MonoBehaviour
           }
           PlayerPrefs.SetString("recentMusic", songPath);
         });
-        Debug.LogObjects(t, t.Contains("_"), t.Contains(" - "));
-        if (t.Contains("_"))
-        {
-          songName = t.Substring(0, t.IndexOf("_"));
-          author = t.Replace(songName + "_", "").Replace(".mp3", "");
-          prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = $"<color=green>{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(songName)}</color> <color=#7d7575>by</color> <color=#c9bebe>{author}</color>";
-        }
-        else if (t.Contains(" - "))
-        {
-          author = t.Substring(0, t.IndexOf(" - "));
-          songName = t.Replace(songName + " - ", "").Replace(".mp3", "");
-          prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = $"<color=green>{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(songName)}</color> <color=#7d7575>by</color> <color=#c9bebe>{author}</color>";
-        }
+        prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = GetColoredSongNameAuthorFromFilename(Path.GetFileNameWithoutExtension(t));
 
         prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<Button>().enabled = false;//onClick.AddListener(delegate { inputSearchString.text = $"<author>{author}</author>"; SearchOnThatSite(inputSearchString); });
 
@@ -714,7 +865,6 @@ public class MusicSelection : MonoBehaviour
     {
       string substr = allMusic[i].Substring(allMusic[i].IndexOf(musicPath) + musicPath.Length);
       string songName = Path.GetFileNameWithoutExtension(allMusic[i]);
-      string author = "";
       // if (substr.Contains("_"))
       // {
       //   songName = substr.Substring(0, substr.IndexOf("_"));
@@ -732,18 +882,21 @@ public class MusicSelection : MonoBehaviour
       songPlayBtn.onClick.AddListener(delegate { StartCoroutine(LoadAndApplySongFromPath(temp)); });
       //PlayerPrefs.GetString("recentMusic")w
       //prefab.transform.GetChild(0).GetChild(0).gameObject.GetComponent<Button>().onClick.AddListener(delegate { PlayerPrefs.SetString("recentMusic", temp); });
-      if (substr.Contains("_"))
-      {
-        songName = substr.Substring(0, substr.IndexOf("_"));
-        author = substr.Replace(songName + "_", "").Replace(".mp3", "");
-        prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = $"<color=#cc0000>{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(songName)}</color> <color=#7d7575>by</color> <color=#c9bebe>{author}</color>";
-      }
-      else if (substr.Contains(" - "))
-      {
-        author = substr.Substring(0, substr.IndexOf(" - "));
-        songName = substr.Replace(author + " - ", "").Replace(".mp3", "");
-        prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = $"<color=#cc0000>{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(songName)}</color> <color=#7d7575>by</color> <color=#c9bebe>{author}</color>";
-      }
+      prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = GetColoredSongNameAuthorFromFilename(songName);
+      // if (substr.Contains("_"))
+      // {
+      //   songName = substr.Substring(0, substr.IndexOf("_"));
+      //   author = substr.Replace(songName + "_", "").Replace(".mp3", "");
+      //   Debug.LogObjects(author, songName);
+      //   prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = $"<color=#cc0000>{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(songName)}</color> <color=#7d7575>by</color> <color=#c9bebe>{author}</color>";
+      // }
+      // else if (substr.Contains(" - "))
+      // {
+      //   author = substr.Substring(0, substr.IndexOf(" - "));
+      //   songName = substr.Replace(author + " - ", "").Replace(".mp3", "");
+      //   Debug.LogObjects(author, songName);
+      //   prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = $"<color=#cc0000>{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(songName)}</color> <color=#7d7575>by</color> <color=#c9bebe>{author}</color>";
+      // }
 
       //prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = "<color=#cc0000>" + songName + "</color>" + (substr.Contains("_") ? (" <color=#7d7575>by</color> " + "<color=#c9bebe>" + author + "</color>") : "");
       prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<Button>().enabled = false;//onClick.AddListener(delegate { inputSearchString.text = "<author>" + author + "</author>"; SearchOnThatSite(inputSearchString); });
@@ -754,7 +907,7 @@ public class MusicSelection : MonoBehaviour
       prefab.transform.GetChild(3).gameObject.GetComponent<Button>().onClick.AddListener(delegate { File.Delete(temp); });
       prefab.transform.GetChild(3).gameObject.GetComponent<Button>().onClick.AddListener(delegate { LoadSongsFromFolder(searchText); });
       prefab.transform.GetChild(3).gameObject.SetActive(true);
-
+      prefab.transform.GetChild(4).gameObject.GetComponent<Button>().onClick.AddListener(delegate { PlaySongSnippet(temp); });
       prefab.SetActive(true);
     }
 

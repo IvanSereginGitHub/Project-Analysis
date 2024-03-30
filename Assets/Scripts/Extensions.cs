@@ -131,7 +131,8 @@ public static class Extensions
   public static void Close(this Prompt prompt)
   {
     Prompts.ClosePrompt(prompt.associatedPrefab);
-    prompt.associatedPrefab = null;
+    if (!prompt.keepAlive)
+      prompt.associatedPrefab = null;
   }
 
 
