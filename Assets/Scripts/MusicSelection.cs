@@ -91,15 +91,16 @@ public class MusicSelection : MonoBehaviour
   public List<Slider> gameProgressSliders;
   public Sprite snippetSprite;
   public GameObject snippetSpectrumPrefab;
+  bool didPauseMainAudSource = false;
   private void Awake()
   {
-    fadeIn = FadeInSong();
-    fadeOut = FadeOutSong();
+    fadeIn = FadeSong(null, 0, 0);
+    fadeOut = FadeSong(null, 0, 0);
     controlSnippet = ControlSnippet(0, 0, null);
 
     snippetPrompt = new Prompt(PromptType.ExitOnly);
     snippetPrompt.keepAlive = true;
-    snippetPrompt.close_action = delegate { StopCoroutine(fadeIn); StopCoroutine(fadeOut); StopCoroutine(controlSnippet); snippetAudSource.Stop(); };
+    snippetPrompt.close_action = delegate { StopCoroutine(fadeIn); StopCoroutine(fadeOut); StopCoroutine(controlSnippet); snippetAudSource.Stop(); if (didPauseMainAudSource) { StartCoroutine(FadeSong(audSource, 0, 1)); audSource.UnPause(); didPauseMainAudSource = false; } };
     Prompts.PreparePrompt(snippetPrompt);
     GameObject spectrumObj = new GameObject("img");
     spectrumObj.transform.SetParent(snippetPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
@@ -110,13 +111,12 @@ public class MusicSelection : MonoBehaviour
     specManager.prefab = snippetSpectrumPrefab;
     specManager.audSource = snippetAudSource;
     specManager.prefParent = specManager.transform;
-    specManager.distance = 0.05f;
     specManager.beatCount = 64;
-    specManager.sizeMultiplier = 18;
+    specManager.sizeMultiplier = 7;
     specManager.defaultWidthMultiplier = 0.025f;
     specManager.endPosition = 2f;
     specManager.startPosition = -2f;
-    specManager.activateByStart = true;
+    specManager.countMultiplier = 2;
     LayoutElement layoutElement = spectrumObj.AddComponent<LayoutElement>();
     layoutElement.minWidth = 400;
     layoutElement.minHeight = 200;
@@ -548,59 +548,69 @@ public class MusicSelection : MonoBehaviour
     AudioClip myClip = DownloadHandlerAudioClip.GetContent(www);
     callback.Invoke(myClip);
   }
-  public IEnumerator FadeOutSong()
+  public IEnumerator FadeSong(AudioSource audSource, float startVolume, float endVolume)
   {
+    if (audSource == null)
+      yield break;
     float time = 0;
-    float currentVolume = snippetAudSource.volume;
     while (time < 1)
     {
-      snippetAudSource.volume = Mathf.Lerp(currentVolume, 0, time);
+      audSource.volume = Mathf.Lerp(startVolume, endVolume, time);
       time += Time.deltaTime / 2;
       yield return null;
     }
-    snippetAudSource.volume = 0;
-  }
-
-  public IEnumerator FadeInSong()
-  {
-    float time = 0;
-    float currentVolume = snippetAudSource.volume;
-    while (time < 1)
-    {
-      snippetAudSource.volume = Mathf.Lerp(currentVolume, 1, time);
-      time += Time.deltaTime / 2;
-      yield return null;
-    }
-    snippetAudSource.volume = 1;
+    audSource.volume = endVolume;
   }
 
   public IEnumerator ControlSnippet(float play_from, float play_to, Prompt invokedPrompt)
   {
+    if (audSource.isPlaying)
+    {
+      didPauseMainAudSource = true;
+      audSource.Pause();
+    }
+
     snippetAudSource.time = play_from;
     snippetAudSource.volume = 0f;
     snippetAudSource.Play();
     yield return fadeIn;
-    while (snippetAudSource.clip.length > play_to && snippetAudSource.time < play_to)
+    while (snippetAudSource.time <= play_to)
     {
       yield return null;
     }
     yield return fadeOut;
     snippetAudSource.Stop();
     invokedPrompt.Close();
+    if (didPauseMainAudSource) { StartCoroutine(FadeSong(audSource, 0, 1)); audSource.UnPause(); didPauseMainAudSource = false; }
   }
   Prompt snippetPrompt;
   IEnumerator fadeIn, fadeOut, controlSnippet;
-  public void PlaySongSnippet(string path, float snippetStart = 50f, float snippetLength = 20f)
+  public void PlaySongSnippet(string path, float snippetStart = 50f, float snippetLength = 30f)
   {
     StopCoroutine(fadeIn);
     StopCoroutine(fadeOut);
     StopCoroutine(controlSnippet);
-    fadeIn = FadeInSong();
-    fadeOut = FadeOutSong();
-    controlSnippet = ControlSnippet(snippetStart, snippetStart + snippetLength, snippetPrompt);
+
     snippetAudSource.Stop();
     StartCoroutine(LoadSongFromPath(path, true, (clip) =>
     {
+      if (clip.length < 80f && clip.length > 50f)
+      {
+        snippetStart = 20f;
+      }
+      else if (clip.length < 80f && clip.length < 50f && clip.length > 5f)
+      {
+        snippetStart = 0f;
+        snippetLength = clip.length - 2f;
+      }
+      else if (clip.length < 5f)
+      {
+        Prompts.QuickStrictPrompt("Sorry, song is too short for playing the snippet.");
+        return;
+      }
+      fadeIn = FadeSong(snippetAudSource, 0, 1);
+      fadeOut = FadeSong(snippetAudSource, 1, 0);
+      controlSnippet = ControlSnippet(snippetStart, snippetStart + snippetLength, snippetPrompt);
       string coloredSongInfo = GetColoredSongNameAuthorFromFilename(Path.GetFileNameWithoutExtension(path));
       snippetPrompt.promptText = $"Playing snippet: {coloredSongInfo}";
 
@@ -672,18 +682,16 @@ public class MusicSelection : MonoBehaviour
         {
           myClip = DownloadHandlerAudioClip.GetContent(www);
         }
-        catch
+        catch (Exception ex)
         {
-          Debug.Log($"An issue happened during song loading. Song's path was/is {path}");
+          Debug.LogWarning($"An issue happened during song loading ({ex.Message}).\nSong path is: {path}");
+          PlayerPrefs.DeleteKey("recentMusic");
         }
       }
     }
 
-
     if (myClip == null)
     {
-      Debug.LogError($"An issue happened during song loading. Tried to load song from path {path}");
-      PlayerPrefs.DeleteKey("recentMusic");
       yield break;
     }
     string fileName = Path.GetFileName(path)/*path.IndexOf(musicPath) != -1 ? path.Substring(path.IndexOf(musicPath) + musicPath.Length) : */;
@@ -903,9 +911,9 @@ public class MusicSelection : MonoBehaviour
 
       prefab.transform.GetChild(1).GetChild(1).gameObject.GetComponent<TextMeshProUGUI>().text = "";
       songPlayBtn.gameObject.SetActive(true);
-
-      prefab.transform.GetChild(3).gameObject.GetComponent<Button>().onClick.AddListener(delegate { File.Delete(temp); });
-      prefab.transform.GetChild(3).gameObject.GetComponent<Button>().onClick.AddListener(delegate { LoadSongsFromFolder(searchText); });
+      prefab.GetComponent<DeleteFile>().filePath = temp;
+      prefab.transform.GetChild(3).gameObject.GetComponent<Button>().onClick.AddListener(delegate { prefab.GetComponent<Animator>().Play("music_prefab_deletion"); });
+      //prefab.transform.GetChild(3).gameObject.GetComponent<Button>().onClick.AddListener(delegate { LoadSongsFromFolder(searchText); });
       prefab.transform.GetChild(3).gameObject.SetActive(true);
       prefab.transform.GetChild(4).gameObject.GetComponent<Button>().onClick.AddListener(delegate { PlaySongSnippet(temp); });
       prefab.SetActive(true);

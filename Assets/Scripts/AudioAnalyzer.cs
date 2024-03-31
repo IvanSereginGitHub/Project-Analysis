@@ -298,6 +298,11 @@ public class AudioAnalyzer : MonoBehaviour
     // {
     //   Destroy(child.gameObject);
     // }
+    if (audSource.clip == null)
+    {
+      Prompts.QuickStrictPrompt("Load audiofile first!");
+      return;
+    }
     float clipLength = audSource.clip.length;
     if (totalSamples == null)
     {
