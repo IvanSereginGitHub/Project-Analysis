@@ -14,7 +14,7 @@ See [this branch](https://github.com/IvanSereginGitHub/Project-Beat-3D/tree/prom
 > 
 > If you don't want to bother with that, do the following:
 > * Place audiofiles in the platform-specific folder, described in the [Unity Documentation](https://docs.unity3d.com/ScriptReference/Application-persistentDataPath.html)
-> * Check if said directory contains /files directory after launching this tool.
+> * Check if said directory contains _music directory **AFTER** launching this tool.
 
 
 # How to install
