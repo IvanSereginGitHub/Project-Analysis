@@ -6,6 +6,10 @@ using UnityEngine.SceneManagement;
 public class ApplicationManager : MonoBehaviour
 {
 
+    void Start()
+    {
+        Application.targetFrameRate = 1000;
+    }
     public void Quit()
     {
         Application.Quit();

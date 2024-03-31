@@ -16,7 +16,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
     public int countMultiplier = 0;
     float distance;
     float[] samples = new float[1024];
-    GameObject[] objects = new GameObject[0];
+    Transform[] objects = new Transform[0];
 
     private void Start()
     {
@@ -35,16 +35,16 @@ public class SpectrumVizualizerManager : MonoBehaviour
         {
             Destroy(objects[i]);
         }
-        objects = new GameObject[0];
+        objects = new Transform[0];
     }
 
     void FillArray()
     {
-        objects = new GameObject[beatCount];
+        objects = new Transform[beatCount];
         for (int i = 0; i < objects.Length; i++)
         {
-            objects[i] = Instantiate(prefab, prefParent);
-            objects[i].transform.localPosition = new Vector3(startPosition + distance * i, 0, 0);
+            objects[i] = Instantiate(prefab, prefParent).transform;
+            objects[i].localPosition = new Vector3(startPosition + distance * i, 0, 0);
         }
     }
 
@@ -55,13 +55,18 @@ public class SpectrumVizualizerManager : MonoBehaviour
     }
     float AverageFromSamplesRange(int start, int length)
     {
-        return samples.Skip(start).Take(length).Average();
+        float avg = 0;
+        for (int i = start; i < start+length; i++)
+        {
+            avg+= samples[i];
+        }
+        return avg / length;
     }
     void VizualizeSpectrum()
     {
         for (int i = 0; i < objects.Length; i++)
         {
-            objects[i].transform.localScale = new Vector3(defaultWidthMultiplier, sizeMultiplier * AverageFromSamplesRange(countMultiplier * i, countMultiplier), 0);
+            objects[i].localScale = new Vector3(defaultWidthMultiplier, sizeMultiplier * AverageFromSamplesRange(countMultiplier * i, countMultiplier), 0);
         }
     }
 }
