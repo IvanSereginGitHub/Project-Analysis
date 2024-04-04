@@ -560,6 +560,15 @@ public class MusicSelection : MonoBehaviour
     audSource.volume = endVolume;
   }
 
+  public void ToggleAudSourceStatus(AudioSource source){
+    if(source.isPlaying){
+      source.Pause();
+    }
+    else {
+      source.UnPause();
+    }
+  }
+
   public IEnumerator ControlSnippet(float play_from, float play_to, Prompt invokedPrompt)
   {
     if (audSource.isPlaying)
