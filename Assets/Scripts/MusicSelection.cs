@@ -565,7 +565,7 @@ public class MusicSelection : MonoBehaviour
       source.Pause();
     }
     else {
-      source.UnPause();
+      source.Play();
     }
   }
 
