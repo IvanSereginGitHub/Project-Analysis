@@ -44,10 +44,6 @@ public class MusicSelection : MonoBehaviour
   public List<AudioClip> allPreloadedMusic = new List<AudioClip>();
   public bool blockAllCommunications = true;
   //persistentdatapath + "/_music/"
-  private string path;
-  //public List<AudioClip> music;
-  public List<string> musicPathes;
-  public List<string> musicNames;
   // private AudioManager audManager;
   [SerializeField]
   private AudioSource audSource, snippetAudSource;
@@ -73,7 +69,8 @@ public class MusicSelection : MonoBehaviour
   public int maxAmountOfPages;
   public string importantMessage;
 
-  public string musicPath;
+  public string mainMusicPath;
+  public List<string> additionalMusicPaths = new List<string>();
   string serviceActivatorPath;
 
   public List<SpectrumObjects> spectrumObjects;
@@ -92,11 +89,26 @@ public class MusicSelection : MonoBehaviour
   public Sprite snippetSprite;
   public GameObject snippetSpectrumPrefab;
   bool didPauseMainAudSource = false;
+  [SerializeField]
+  TMP_InputField aa_samples, aa_threshold, aa_window;
+  [SerializeField]
+  Toggle aa_usewindowlastval;
   private void Awake()
   {
     fadeIn = FadeSong(null, 0, 0);
     fadeOut = FadeSong(null, 0, 0);
     controlSnippet = ControlSnippet(0, 0, null);
+    analysisOptionsPrompt = new Prompt(PromptType.ExitOnly);
+    analysisOptionsPrompt.keepAlive = true;
+    Prompts.PreparePrompt(analysisOptionsPrompt);
+    aa_samples.transform.SetParent(analysisOptionsPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
+    aa_threshold.transform.SetParent(analysisOptionsPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
+    aa_window.transform.SetParent(analysisOptionsPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
+    aa_usewindowlastval.transform.SetParent(analysisOptionsPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
+    aa_samples.transform.localScale = Vector3.one;
+    aa_threshold.transform.localScale = Vector3.one;
+    aa_window.transform.localScale = Vector3.one;
+    aa_usewindowlastval.transform.localScale = Vector3.one;
 
     snippetPrompt = new Prompt(PromptType.ExitOnly);
     snippetPrompt.keepAlive = true;
@@ -121,12 +133,15 @@ public class MusicSelection : MonoBehaviour
     layoutElement.minWidth = 400;
     layoutElement.minHeight = 200;
 
-    path = Application.persistentDataPath + "/_music";
-    if (!Directory.Exists(path))
+    mainMusicPath = Application.persistentDataPath + "/_music/";
+    if (!Directory.Exists(mainMusicPath))
     {
-      Directory.CreateDirectory(path);
+      Directory.CreateDirectory(mainMusicPath);
     }
-    musicPath = Application.persistentDataPath + "/_music/";
+    if (PlayerPrefs.HasKey("mainMusicPath"))
+    {
+      mainMusicPath = PlayerPrefs.GetString("mainMusicPath");
+    }
     FillPreloadedSongList();
     LoadSongsFromFolder();
 
@@ -170,23 +185,6 @@ public class MusicSelection : MonoBehaviour
     {
       streamingSpectrum = toggle;
     }
-  }
-  public void Refresh()
-  {
-    musicPathes.Clear();
-    musicNames.Clear();
-    foreach (string t in Directory.GetFiles(path))
-    {
-      if (t.EndsWith(".wav"))
-      {
-        musicPathes.Add(t);
-        string tmp = t.Substring(t.LastIndexOf("\\") + 1);
-        tmp = tmp.Replace(".wav", "");
-        musicNames.Add(tmp);
-      }
-
-    }
-    musicNames.Add("None");
   }
 
   public void GetAudioData()
@@ -583,7 +581,7 @@ public class MusicSelection : MonoBehaviour
     invokedPrompt.Close();
     if (didPauseMainAudSource) { StartCoroutine(FadeSong(audSource, 0, 1)); audSource.UnPause(); didPauseMainAudSource = false; }
   }
-  Prompt snippetPrompt;
+  Prompt snippetPrompt, analysisOptionsPrompt;
   IEnumerator fadeIn, fadeOut, controlSnippet;
   public void PlaySongSnippet(string path, float snippetStart = 50f, float snippetLength = 30f)
   {
@@ -623,11 +621,15 @@ public class MusicSelection : MonoBehaviour
     }));
   }
 
+  public void OpenAnalysisSettings()
+  {
+    analysisOptionsPrompt.Show();
+  }
+
 
   public void RefreshSceneInfo()
   {
     audSource.Stop();
-    Refresh();
     GetAudioData();
     foreach (SpectrumObjects t in spectrumObjects)
     {
@@ -814,17 +816,21 @@ public class MusicSelection : MonoBehaviour
     //ClearAllCoroutines();
     //ClearList();
     ClearList(customMusicPrefabParent);
-    if (!Directory.Exists(musicPath))
+    if (!Directory.Exists(mainMusicPath))
     {
-      Directory.CreateDirectory(musicPath);
+      Directory.CreateDirectory(mainMusicPath);
     }
-    List<string> allMusic = Directory.GetFiles(musicPath, "*.mp3").ToList();
+    List<string> allMusic = Directory.GetFiles(mainMusicPath, "*.mp3").ToList();
+    foreach (string path in additionalMusicPaths)
+    {
+      allMusic.AddRange(Directory.GetFiles(path, "*.mp3"));
+    }
 
     if (searchText != "")
     {
       foreach (string t in allMusic.ToList())
       {
-        if (!t[(t.IndexOf(musicPath) + musicPath.Length)..].ToLower().Contains(searchText.ToLower()))
+        if (!Path.GetFileNameWithoutExtension(t).ToLower().Contains(searchText.ToLower()))
         {
           allMusic.Remove(t);
         }
@@ -833,7 +839,7 @@ public class MusicSelection : MonoBehaviour
 
     foreach (string t in allPreloadedSongs)
     {
-      if (searchText != "" && !t.ToLower().Contains(searchText.ToLower()))
+      if (searchText != "" && !Path.GetFileNameWithoutExtension(t).ToLower().Contains(searchText.ToLower()))
         continue;
       else
       {
@@ -846,7 +852,7 @@ public class MusicSelection : MonoBehaviour
         {
           string songPath = $"PreloadedSongs/Songs/{Path.GetFileNameWithoutExtension(t)}/" + Path.GetFileNameWithoutExtension(t);
           audSource.clip = Resources.Load(songPath) as AudioClip;
-          audSource.Stop(); Refresh();
+          audSource.Stop();
           GetAudioData();
           LoadInformation();
           foreach (SpectrumObjects t in spectrumObjects)
@@ -871,7 +877,6 @@ public class MusicSelection : MonoBehaviour
 
     for (int i = 0; i < allMusic.Count; i++)
     {
-      string substr = allMusic[i].Substring(allMusic[i].IndexOf(musicPath) + musicPath.Length);
       string songName = Path.GetFileNameWithoutExtension(allMusic[i]);
       // if (substr.Contains("_"))
       // {

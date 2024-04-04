@@ -26,6 +26,10 @@ public class AudioAnalyzer : MonoBehaviour
   public float segmenterDifferenceThreshold = 0.3f;
   //How many additional segments from right are required to calculate average?
   public int segmenterSmoothingWindowSize = 3;
+  /// <summary>
+  /// Uses last found segment's average value diff as comparison for the next segments
+  /// </summary>
+  public bool preserveLastDiffValueAsCompare = false;
 
   [SerializeField]
   Transform segmentPrefabParent;
@@ -79,8 +83,9 @@ public class AudioAnalyzer : MonoBehaviour
   }
   public List<float> SegmenterAnalyzer(float[] totalSamples, float clipLength)
   {
+    Debug.LogObjects("info:", segmentsSampleLength, segmenterDifferenceThreshold, segmenterSmoothingWindowSize);
     List<float> min_times = new List<float>();
-    float? previousAverage = null;
+    float previousAverage = 0f;
     for (int i = 0; i < totalSamples.Length; i += segmentsSampleLength)
     {
       IEnumerable<float> arr = totalSamples.Skip(i).Take(segmentsSampleLength * (segmenterSmoothingWindowSize + 1));
@@ -91,30 +96,36 @@ public class AudioAnalyzer : MonoBehaviour
       int count = 0;
       //List<float> values = new List<float>();
       //int time_ind = i /*+ arr.IndexOf(average)*/;
-      for (int j = 0; j <= segmenterSmoothingWindowSize; j++)
-      {
-        IEnumerable<float> sub_arr = arr.Skip(j * segmentsSampleLength).Take(segmentsSampleLength).Select(x => Math.Abs(x));
-        if (sub_arr.Count() < 1)
-          continue;
-        //values.Add(sub_arr.Max());
-        sum += sub_arr.Average();
-        count++;
-      }
+      // for (int j = 0; j <= segmenterSmoothingWindowSize; j++)
+      // {
+      //   IEnumerable<float> sub_arr = arr.Skip(j * segmentsSampleLength).Take(segmentsSampleLength).Select(x => Math.Abs(x));
+      //   if (sub_arr.Count() < 1)
+      //     continue;
+      //   //values.Add(sub_arr.Max());
+      //   sum += sub_arr.Average();
+      //   count++;
+      // }
 
       //Debug.LogList(values);
-      float average = sum / count;
+      float average = arr.Take(segmentsSampleLength * segmenterSmoothingWindowSize).Select(x => Math.Abs(x)).Average();
 
-      if (previousAverage != null)
+      float approx_time = ConvertSampleIndexToTime(i, totalSamples.Length, clipLength);
+
+      if (Math.Abs(previousAverage - average) > segmenterDifferenceThreshold)
       {
-        float approx_time = ConvertSampleIndexToTime(i, totalSamples.Length, clipLength);
-
-        if (Math.Abs(previousAverage.Value - average) > segmenterDifferenceThreshold)
+        //Debug.LogObjects(approx_time, previousAverage, average);
+        if (preserveLastDiffValueAsCompare)
         {
-
-          min_times.Add(approx_time);
+          Debug.LogObjects("Progress: ", (float)i / totalSamples.Length * 100, '%');
+          previousAverage = average;
+          //i += segmentsSampleLength * (segmenterSmoothingWindowSize + 1);
         }
+
+        min_times.Add(approx_time);
       }
-      previousAverage = arr.Take(segmentsSampleLength).Select(x => Math.Abs(x)).Average();
+
+      if (!preserveLastDiffValueAsCompare)
+        previousAverage = arr.Take(segmentsSampleLength).Select(x => Math.Abs(x)).Average();
     }
     return min_times;
   }
@@ -123,13 +134,6 @@ public class AudioAnalyzer : MonoBehaviour
   public void DoSongSegmentation(float[] totalSamples, float clipLength)
   {
     segments = SegmenterAnalyzer(totalSamples, clipLength);
-    for (int i = 0; i < segments.Count; i++)
-    {
-      float time = segments[i];
-      GameObject temp = Instantiate(segmentPrefab, segmentPrefabParent);
-      temp.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = segments[i].ToString();
-      temp.transform.GetChild(1).GetComponent<Button>().onClick.AddListener(delegate { audSource.Stop(); audSource.time = time; audSource.Play(); });
-    }
     // Debug.LogList(GetSegments());
   }
   public static int ConvertTimeToSampleIndex(float time, int totalSamplesLength, float totalTime)
@@ -263,6 +267,10 @@ public class AudioAnalyzer : MonoBehaviour
   {
     segmentsSampleLength = Convert.ToInt32(val);
   }
+  public void ChangePreserveLastDiffValueAsCompare(bool val)
+  {
+    preserveLastDiffValueAsCompare = val;
+  }
   public void ChangeSegmenterDiffValue(string val)
   {
     segmenterDifferenceThreshold = Convert.ToSingle(val);
@@ -279,11 +287,6 @@ public class AudioAnalyzer : MonoBehaviour
   }
   public void AnalyzeSongSegmentsPos(float[] totalSamples, float clipLength)
   {
-    segments.Clear();
-    foreach (Transform t in segmentPrefabParent)
-    {
-      Destroy(t.gameObject);
-    }
     DoSongSegmentation(totalSamples, clipLength);
   }
 
@@ -291,7 +294,36 @@ public class AudioAnalyzer : MonoBehaviour
   {
     AnalyzeSong(null);
   }
-  public void AnalyzeSong(float[] totalSamples = null)
+
+  IEnumerator CreateSegmentPrefabs()
+  {
+    foreach (Transform t in segmentPrefabParent)
+    {
+      Destroy(t.gameObject);
+    }
+    for (int i = 0; i < segments.Count; i++)
+    {
+      float time = segments[i];
+      GameObject temp = Instantiate(segmentPrefab, segmentPrefabParent);
+      temp.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = segments[i].ToString();
+      temp.transform.GetChild(1).GetComponent<Button>().onClick.AddListener(delegate { audSource.Stop(); audSource.time = time; audSource.Play(); });
+      yield return null;
+    }
+  }
+
+  public void StartAnalyzingSong()
+  {
+    if (isRunningAnalysis) { Prompts.QuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
+    StartCoroutine(AnalyzeSong(null));
+  }
+
+  public void StartAnalyzingSong(float[] totalSamples = null)
+  {
+    if (isRunningAnalysis) { Prompts.QuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
+    StartCoroutine(AnalyzeSong(totalSamples));
+  }
+  bool isRunningAnalysis = false;
+  IEnumerator AnalyzeSong(float[] totalSamples = null)
   {
     spectrumsList.Clear();
     // foreach (Transform child in listPrefabParent)
@@ -301,7 +333,7 @@ public class AudioAnalyzer : MonoBehaviour
     if (audSource.clip == null)
     {
       Prompts.QuickStrictPrompt("Load audiofile first!");
-      return;
+      yield break;
     }
     float clipLength = audSource.clip.length;
     if (totalSamples == null)
@@ -321,7 +353,23 @@ public class AudioAnalyzer : MonoBehaviour
          counter++;
        } */
     //TODO: Multithread that crap
-    AnalyzeSongSegmentsPos(totalSamples, clipLength);
+    Thread myThread = new Thread(() =>
+    {
+      Debug.Log("analyzing");
+      isRunningAnalysis = true;
+      segments = SegmenterAnalyzer(totalSamples, clipLength);
+      isRunningAnalysis = false;
+      Debug.Log("finished");
+      // segments = SegmenterAnalyzer(totalSamples, clipLength);
+      // Debug.Log("finishing");
+    });
+    myThread.Name = "AA_SegmentsThread";
+    myThread.Start();
+    while (myThread.IsAlive)
+    {
+      yield return null;
+    }
+    StartCoroutine(CreateSegmentPrefabs());
     //DoSongSnippetFinding(totalSamples, clipLength);
   }
 

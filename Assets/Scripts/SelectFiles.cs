@@ -21,12 +21,30 @@ public class SelectFiles : MonoBehaviour
     }
     else
     {
-      Prompts.QuickCancelOnlyPrompt($"Song reading on this platform ({Application.platform}) <color=red><b>is not implemented yet, sorry</b></color>!", out _);
+      Prompts.QuickCancelOnlyPrompt($"Various file system operations on this ({Application.platform}) platform <color=red><b>are not implemented yet</b></color>!", out _);
+    }
+  }
+
+  public void SelectFolder()
+  {
+    if (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor)
+    {
+      Prompts.QuickStrictPrompt("Use an Explorer window to select folder path that will be used for scanning.");
+      StartCoroutine(Delays.DelayAction(1f, () => { SelectFolderWindows(); }));
+    }
+    else if (Application.platform == RuntimePlatform.Android)
+    {
+      Prompts.QuickStrictPrompt("Use an Explorer window to select folder path that will be used for scanning.\n\n\nPlease note: Android & iOS do not allow you to select folders directly, compared to systems like Windows.\nPlease, add your music manually to desired folder and select this file via file explorer. It's folder will be added.", 5f);
+      StartCoroutine(Delays.DelayAction(5f, () => { SelectFolderMobile(); }));
+    }
+    else
+    {
+      Prompts.QuickCancelOnlyPrompt($"Various file system operations on this ({Application.platform}) platform <color=red><b>are not implemented yet</b></color>!", out _);
     }
   }
   void PromptAfter(string[] path)
   {
-    string songsPath = ProjectManager.GetProperPath(Application.persistentDataPath, "_music");
+    string songsPath = ProjectManager.GetProperPath(musicSelection.mainMusicPath);
     Prompt prompt = new Prompt(PromptType.Normal);
     if (path.Length == 0)
     {
@@ -114,6 +132,11 @@ public class SelectFiles : MonoBehaviour
     StandaloneFileBrowser.OpenFilePanelAsync("Open File", "", extensions, false, (string[] paths) => { StartCoroutine(Delays.DelayAction(0.2f, () => { PromptAfter(paths); })); });
   }
 
+  void SelectFolderWindows()
+  {
+    StandaloneFileBrowser.OpenFolderPanelAsync("Select folder", "", false, (string[] paths) => { StartCoroutine(Delays.DelayAction(0.2f, () => { if (paths.Length > 0) ApplyNewMusicPath(paths[0]); })); });
+  }
+
   void SelectFileMobile()
   {
     NativeFilePicker.Permission permission = NativeFilePicker.PickFile((path) =>
@@ -128,6 +151,43 @@ public class SelectFiles : MonoBehaviour
 
     Debug.Log("Permission result: " + permission);
   }
+
+  void SelectFolderMobile()
+  {
+    NativeFilePicker.Permission permission = NativeFilePicker.PickFile((path) =>
+    {
+      if (path == null)
+        Debug.Log("Operation cancelled");
+      else
+      {
+        StartCoroutine(Delays.DelayAction(0.2f, () => { string directoryPath = Path.GetDirectoryName(path); ApplyNewMusicPath(directoryPath); }));
+      }
+    }, new string[] { NativeFilePicker.ConvertExtensionToFileType("mp3") });
+
+    Debug.Log("Permission result: " + permission);
+  }
+
+  void ApplyNewMusicPath(string directoryPath)
+  {
+    if (Directory.Exists(directoryPath))
+    {
+      musicSelection.mainMusicPath = directoryPath;
+      PlayerPrefs.SetString("mainMusicPath", directoryPath);
+      Prompts.QuickStrictPrompt($"Folder {directoryPath} was successfully selected!");
+      musicSelection.LoadSongsFromFolder();
+    }
+  }
+  //for future
+  void AddNewMusicPath(string directoryPath)
+  {
+    if (Directory.Exists(directoryPath) && !musicSelection.additionalMusicPaths.Contains(directoryPath))
+    {
+      musicSelection.additionalMusicPaths.Add(directoryPath);
+      Prompts.QuickStrictPrompt($"Folder {directoryPath} was successfully added!");
+      musicSelection.LoadSongsFromFolder();
+    }
+  }
+
 
   public void ShowInExplorer()
   {

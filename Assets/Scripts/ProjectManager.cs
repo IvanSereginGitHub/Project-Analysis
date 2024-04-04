@@ -135,7 +135,7 @@ public class ProjectManager : MonoBehaviour
   public GameObject levelPrefab, player, pausePanel, pauseButton;
   public static readonly long maxFileSize = 20971520;
   [HideInInspector]
-  public static bool advancedLogging = true;
+  public static bool advancedLogging = false;
   public static bool isPlayingLoadedLevel = false;
 
   public static string customObjectsPath = "";
@@ -197,7 +197,8 @@ public class ProjectManager : MonoBehaviour
     catch (Exception ex)
     {
       // Debug.LogObjects(src, fieldName);
-      if (advancedLogging) {
+      if (advancedLogging)
+      {
         Debug.Log($"Something went wrong ({ex})");
       }
 
@@ -261,78 +262,7 @@ public class ProjectManager : MonoBehaviour
   {
     try
     {
-      if (expectedType == typeof(Vector2))
-      {
-        Vector2 val = (Vector4)value;
-        if (addValue)
-        {
-          Vector2 prevVal = (Vector2)entryToApply.GetValue(src);
-          val = prevVal + val;
-        }
-
-        entryToApply.SetValue(src, val);
-      }
-      else if (expectedType == typeof(Vector3))
-      {
-        Vector3 val = (Vector4)value;
-        if (addValue)
-        {
-          Vector3 prevVal = (Vector3)entryToApply.GetValue(src);
-          val = prevVal + val;
-        }
-        entryToApply.SetValue(src, val);
-      }
-      else if (expectedType == typeof(Color))
-      {
-        Color val = (Vector4)value;
-        if (addValue)
-        {
-          Color prevVal = (Color)entryToApply.GetValue(src);
-          val = prevVal + val;
-        }
-        entryToApply.SetValue(src, val);
-      }
-      else if (expectedType == typeof(float))
-      {
-        float val = ((Vector4)value).x;
-        if (addValue)
-        {
-          float prevVal = (float)entryToApply.GetValue(src);
-          val = prevVal + val;
-        }
-        entryToApply.SetValue(src, val);
-      }
-      else if (expectedType == typeof(ParticleSystem.MinMaxCurve))
-      {
-        ParticleSystem.MinMaxCurve val = ((Vector4)value).x;
-        if (addValue)
-        {
-          ParticleSystem.MinMaxCurve prevVal = (ParticleSystem.MinMaxCurve)entryToApply.GetValue(src);
-          val = prevVal.constant + val.constant;
-        }
-        entryToApply.SetValue(src, val);
-      }
-      else if (expectedType == typeof(int))
-      {
-        int val = (int)((Vector4)value).x;
-        if (addValue)
-        {
-          int prevVal = (int)entryToApply.GetValue(src);
-          val = prevVal + val;
-        }
-        entryToApply.SetValue(src, val);
-      }
-      else
-      {
-        try
-        {
-          entryToApply.SetValue(src, value);
-        }
-        catch
-        {
-          Debug.Log($"Oops, don't know what to do with this expected type {expectedType}");
-        }
-      }
+      entryToApply.SetValue(src, Convert.ChangeType(value, expectedType));
     }
     catch (Exception ex)
     {
