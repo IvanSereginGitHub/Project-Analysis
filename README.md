@@ -5,10 +5,9 @@ Project Beat is a crossplatform tool for analyzing different properties of audio
 > This tool is by default integrated with another tool called "Prompts" for advanced UI interactions.
 > 
 > This repository **DOES NOT** contain it. See [Prompts](https://github.com/IvanSereginGitHub/Prompts) for more info.
+> See [this branch](https://github.com/IvanSereginGitHub/Project-Beat-3D/tree/prompts-less) for version without integration. Most features of main branch would not be available.
 
  
-See [this branch](https://github.com/IvanSereginGitHub/Project-Beat-3D/tree/prompts-less) for version without integration. Most features of main branch would not be available.
-
 > [!IMPORTANT]
 > While analysis itself is indeed crossplatform (and only file format depending), as well as Unity Runtime module (which runs this tool) - you would need to install platform-specific file browsers and modify existing file "SelectFiles.cs" in order to search, add to local folder or simply read audiofiles via native platform browser.
 > 
@@ -21,9 +20,9 @@ See [this branch](https://github.com/IvanSereginGitHub/Project-Beat-3D/tree/prom
 1. Download Unity 2022.3.20f1
 Any other version might work, but I personally don't recommend using any version below Unity 2020 LTS
 2. Download this tool via `Code > Download Zip`
-  * (or directly via `git clone https://github.com/IvanSereginGitHub/Project-Beat-3D`)
+   * (or directly via `git clone https://github.com/IvanSereginGitHub/Project-Beat-3D`)
 3. Add project to Unity Hub and launch it
-  * (or open directly from already launched editor via `File > Open Project`)
+   * (or open directly from already launched editor via `File > Open Project`)
 4. Open `Scenes > SongAnalysis.scene` in Project Explorer
 5. Use inside of editor or build via `File > Build Settings` for your platform
 
