@@ -20,7 +20,7 @@ Project Beat is a crossplatform tool for analyzing different properties of audio
 
 # How to install
 1. Download Unity 2022.3.20f1
-Any other version might work, but I personally don't recommend using any version below Unity 2020 LTS
+   * Any other version might work, but I personally don't recommend using any version below Unity 2020 LTS
 2. Download this tool via `Code > Download Zip`
    * (or directly via `git clone https://github.com/IvanSereginGitHub/Project-Beat-3D`)
 3. Add project to Unity Hub and launch it
