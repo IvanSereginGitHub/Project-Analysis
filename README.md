@@ -5,6 +5,8 @@ Project Beat is a crossplatform tool for analyzing different properties of audio
 > This tool is by default integrated with another tool called "Prompts" for advanced UI interactions.
 > 
 > This repository **DOES NOT** contain it. See [Prompts](https://github.com/IvanSereginGitHub/Prompts) for more info.
+>
+>
 > See [this branch](https://github.com/IvanSereginGitHub/Project-Beat-3D/tree/prompts-less) for version without integration. Most features of main branch would not be available.
 
  
