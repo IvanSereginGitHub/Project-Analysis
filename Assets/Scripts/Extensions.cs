@@ -25,42 +25,7 @@ public static class Extensions
     return snapValue * Mathf.Round((input / snapValue));
   }
 
-  public static void CloseAfter(this Prompt prompt, float time)
-  {
-    prompt.closingTime = time;
-  }
-
-  public static void OpenAfter(this Prompt prompt, float time)
-  {
-    prompt.openingTime = time;
-  }
-  public static Prompt SetToYesOnly(this Prompt prompt)
-  {
-    prompt.promptType = PromptType.YesOnly;
-    prompt.ResetActions();
-    return prompt;
-  }
-
-  public static void UpdatePromptText(this Prompt prompt, string newText)
-  {
-    prompt.associatedPrefab.GetComponent<PromptPanel>().promptText.text = newText;
-  }
-
-  public static Prompt SetToNormal(this Prompt prompt)
-  {
-    prompt.promptType = PromptType.Normal;
-    prompt.ResetActions();
-    return prompt;
-  }
-
-  public static Prompt SetToStrictPanel(this Prompt prompt)
-  {
-    prompt.promptType = PromptType.StrictPanel;
-    prompt.ResetActions();
-    return prompt;
-  }
-
-
+ 
   public static string RemoveLastCharacters(this string str, int count)
   {
     if (count <= 0)
@@ -105,36 +70,6 @@ public static class Extensions
 
     return list_copy;
   }
-
-  //public static GameObject AddNewObject(this Prompt prompt,GameObject obj, float width, float height)
-  //{
-  //    prompt.additionalUIElements.Add(obj);
-  //    obj.transform.SetParent(prompt.associatedPrefab.transform);
-  //    LayoutElement layEl = obj.AddComponent<LayoutElement>();
-  //    layEl.minWidth = width;
-  //    layEl.minHeight = height;
-  //    return obj;
-  //}
-  //This should automatically find PromptsManager or completely remove it
-  public static void Show(this Prompt prompt)
-  {
-    Prompts.ShowPrompt(prompt);
-  }
-
-  public static void Show(this Prompt prompt, string newTitle)
-  {
-    prompt.promptText = newTitle;
-    prompt.Close();
-    Prompts.ShowPrompt(prompt);
-  }
-
-  public static void Close(this Prompt prompt)
-  {
-    Prompts.ClosePrompt(prompt.associatedPrefab);
-    if (!prompt.keepAlive)
-      prompt.associatedPrefab = null;
-  }
-
 
   public static bool IsNearlyEqualTo(this float a, float b, float margin)
   {
@@ -266,5 +201,15 @@ public static class Extensions
   public static float ToZeroOne(this bool boolean)
   {
     return boolean ? 0f : 1f;
+  }
+
+  public static T GetAddComponent<T>(this GameObject obj) where T : UnityEngine.Component
+  {
+    obj.TryGetComponent(out T comp);
+    if (comp == null)
+    {
+      comp = obj.AddComponent<T>();
+    }
+    return comp;
   }
 }

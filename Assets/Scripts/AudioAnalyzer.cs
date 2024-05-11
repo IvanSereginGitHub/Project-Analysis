@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -42,8 +41,26 @@ public class AudioAnalyzer : MonoBehaviour
   // {
   //   AnalyzeSong();
   // }
-
+  public Image loadingImage, hideOnLoadingImage;
+  float splitProgress = 0f, analysisProgress = 0f;
   bool useAverageInsteadOfMax = false;
+
+  public List<GameObject> analysisSettings = new List<GameObject>();
+  Prompt analysisOptionsPrompt;
+  public RawImage spectrogramTexture;
+  public void Start()
+  {
+    analysisOptionsPrompt = new Prompt(PromptType.ExitOnly);
+    Prompts.PreparePrompt(analysisOptionsPrompt, true);
+    foreach (var obj in analysisSettings)
+    {
+      analysisOptionsPrompt.PlaceGameobjectInside(obj);
+    }
+  }
+  public void OpenAnalysisSettings()
+  {
+    analysisOptionsPrompt.Show();
+  }
 
   IEnumerator ProcessSamples(int ind, int start_sample, float[] totalSamples, float clipLength)
   {
@@ -81,6 +98,102 @@ public class AudioAnalyzer : MonoBehaviour
     spectrumsList[ind] = magnitudes;
     //allProcessedSamples.Add(magnitudes);
   }
+  // Function for splitting audio into chunks
+  public float[] AudioSplitter(float[] totalSamples, int segmentsSampleLength)
+  {
+    int arr_size = Mathf.CeilToInt(totalSamples.Length / segmentsSampleLength);
+    float[] res = new float[arr_size + 1];
+    int count = 0;
+    float sum = 0;
+    for (int i = 0; i < totalSamples.Length; i++)
+    {
+      sum += Math.Abs(totalSamples[i]);
+      if ((i == segmentsSampleLength * (count + 1)) || i == totalSamples.Length - 1)
+      {
+        // Getting average value as result
+        //Debug.LogObjects(arr_size, count);
+        res[count] = sum / segmentsSampleLength;
+        count++;
+        sum = 0;
+      }
+      splitProgress = (float)i / totalSamples.Length;
+    }
+    return res;
+  }
+  public List<float> SegmentsAnalyzer_splitted(float[] splittedSamples, float clipLength)
+  {
+    Debug.LogObjects("info:", segmentsSampleLength, segmenterDifferenceThreshold, segmenterSmoothingWindowSize);
+    List<float> min_times = new List<float>();
+    float previousAverage = 0f;
+    Debug.Log(splittedSamples.Length);
+    for (int i = 0; i < splittedSamples.Length; i++)
+    {
+      float average = splittedSamples[i];
+
+      // Add selected count of windows
+
+      int min_value = Math.Min(splittedSamples.Length, i + segmenterSmoothingWindowSize);
+      for (int j = i + 1; j < min_value; j++)
+      {
+        average += splittedSamples[j];
+      }
+
+      average /= segmenterSmoothingWindowSize;
+
+      if (Math.Abs(previousAverage - average) > segmenterDifferenceThreshold)
+      {
+        //Debug.LogObjects(approx_time, previousAverage, average);
+        if (preserveLastDiffValueAsCompare)
+        {
+          previousAverage = average;
+          //i += segmentsSampleLength * (segmenterSmoothingWindowSize + 1);
+        }
+        float approx_time = ConvertSampleIndexToTime(i, splittedSamples.Length, clipLength);
+        min_times.Add(approx_time);
+      }
+
+      if (!preserveLastDiffValueAsCompare)
+        previousAverage = splittedSamples[i];
+      analysisProgress = (float)i / splittedSamples.Length;
+    }
+    return min_times;
+  }
+  public Color32[] GenerateSpectrogram(int width, int height, float[] samples, bool convertToDb = true)
+  {
+    int numFrames = samples.Length / width;
+    Color32[] pixels = new Color32[width * height];
+
+    for (int x = 0; x < width; x++)
+    {
+      float[] frame = new float[height];
+      int offset = x * numFrames;
+
+      for (int j = 0; j < height; j++)
+      {
+        int ind = Math.Min(offset + j, samples.Length - 1);
+        //Debug.LogObjects(ind, samples.Length);
+        frame[j] = samples[ind];
+      }
+
+      System.Numerics.Complex[] complexes = FastFourierTransform.ConvertFloatToComplex(frame);
+      FastFourierTransform.FFT(complexes);
+      Debug.Log(complexes.Length);
+      double[] magnitudes = new double[complexes.Length / 2];
+      for (int l = 0; l < magnitudes.Length; l++)
+      {
+        magnitudes[l] = complexes[l].Magnitude;
+        if (convertToDb)
+          magnitudes[l] = 20 * Math.Log10(magnitudes[l]); // convert to db
+      }
+
+      for (int y = 0; y < magnitudes.Length; y++)
+      {
+        float intensity = (float)magnitudes[y];
+        pixels[x + y * width] = new Color(intensity, intensity, intensity);
+      }
+    }
+    return pixels;
+  }
   public List<float> SegmenterAnalyzer(float[] totalSamples, float clipLength)
   {
     Debug.LogObjects("info:", segmentsSampleLength, segmenterDifferenceThreshold, segmenterSmoothingWindowSize);
@@ -116,7 +229,6 @@ public class AudioAnalyzer : MonoBehaviour
         //Debug.LogObjects(approx_time, previousAverage, average);
         if (preserveLastDiffValueAsCompare)
         {
-          Debug.LogObjects("Progress: ", (float)i / totalSamples.Length * 100, '%');
           previousAverage = average;
           //i += segmentsSampleLength * (segmenterSmoothingWindowSize + 1);
         }
@@ -126,6 +238,7 @@ public class AudioAnalyzer : MonoBehaviour
 
       if (!preserveLastDiffValueAsCompare)
         previousAverage = arr.Take(segmentsSampleLength).Select(x => Math.Abs(x)).Average();
+      analysisProgress = (float)i / totalSamples.Length;
     }
     return min_times;
   }
@@ -168,6 +281,7 @@ public class AudioAnalyzer : MonoBehaviour
     audSource.time = snippet_start;
     audSource.Play();
   }
+
   Stopwatch timer;
 
   void StartStopwatch(string message = "")
@@ -352,23 +466,45 @@ public class AudioAnalyzer : MonoBehaviour
          StartCoroutine(ProcessSamples(counter, i, totalSamples, clipLength));
          counter++;
        } */
-    //TODO: Multithread that crap
+    splitProgress = 0f;
+    analysisProgress = 0f;
+    hideOnLoadingImage.enabled = false;
+    int stored_sample_length = segmentsSampleLength;
+
+
+    Texture2D specTex = new Texture2D((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
+    Color32[] colorsArr = new Color32[0];
+    int tex_width = specTex.width;
+    int tex_heigth = specTex.height;
     Thread myThread = new Thread(() =>
     {
-      Debug.Log("analyzing");
+      Debug.Log("splitting samples");
       isRunningAnalysis = true;
-      segments = SegmenterAnalyzer(totalSamples, clipLength);
+      float[] splitted_arr = AudioSplitter(totalSamples, stored_sample_length);
+      colorsArr = GenerateSpectrogram(tex_width, tex_heigth, totalSamples);
+      Debug.LogObjects("done splitting, result: ", splitted_arr.Length);
+      Debug.Log("analyzing segments");
+      segments = SegmentsAnalyzer_splitted(splitted_arr, clipLength);
+      Debug.LogObjects("done analyzing, result: ", segments.Count);
       isRunningAnalysis = false;
       Debug.Log("finished");
       // segments = SegmenterAnalyzer(totalSamples, clipLength);
       // Debug.Log("finishing");
     });
-    myThread.Name = "AA_SegmentsThread";
+
     myThread.Start();
     while (myThread.IsAlive)
     {
+      loadingImage.fillAmount = splitProgress / 2 + analysisProgress / 2;
       yield return null;
     }
+    specTex.SetPixels32(colorsArr);
+    specTex.Apply();
+    spectrogramTexture.texture = specTex;
+    hideOnLoadingImage.enabled = true;
+    splitProgress = 0f;
+    analysisProgress = 0f;
+    loadingImage.fillAmount = splitProgress / 2 + analysisProgress / 2;
     StartCoroutine(CreateSegmentPrefabs());
     //DoSongSnippetFinding(totalSamples, clipLength);
   }

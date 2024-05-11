@@ -70,7 +70,7 @@ public class MusicSelection : MonoBehaviour
   public string importantMessage;
 
   public string mainMusicPath;
-  public List<string> additionalMusicPaths = new List<string>();
+  //public List<string> additionalMusicPaths = new List<string>();
   string serviceActivatorPath;
 
   public List<SpectrumObjects> spectrumObjects;
@@ -89,33 +89,17 @@ public class MusicSelection : MonoBehaviour
   public Sprite snippetSprite;
   public GameObject snippetSpectrumPrefab;
   bool didPauseMainAudSource = false;
-  [SerializeField]
-  TMP_InputField aa_samples, aa_threshold, aa_window;
-  [SerializeField]
-  Toggle aa_usewindowlastval;
   private void Awake()
   {
     fadeIn = FadeSong(null, 0, 0);
     fadeOut = FadeSong(null, 0, 0);
     controlSnippet = ControlSnippet(0, 0, null);
-    analysisOptionsPrompt = new Prompt(PromptType.ExitOnly);
-    analysisOptionsPrompt.keepAlive = true;
-    Prompts.PreparePrompt(analysisOptionsPrompt);
-    aa_samples.transform.SetParent(analysisOptionsPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
-    aa_threshold.transform.SetParent(analysisOptionsPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
-    aa_window.transform.SetParent(analysisOptionsPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
-    aa_usewindowlastval.transform.SetParent(analysisOptionsPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
-    aa_samples.transform.localScale = Vector3.one;
-    aa_threshold.transform.localScale = Vector3.one;
-    aa_window.transform.localScale = Vector3.one;
-    aa_usewindowlastval.transform.localScale = Vector3.one;
 
     snippetPrompt = new Prompt(PromptType.ExitOnly);
-    snippetPrompt.keepAlive = true;
     snippetPrompt.close_action = delegate { StopCoroutine(fadeIn); StopCoroutine(fadeOut); StopCoroutine(controlSnippet); snippetAudSource.Stop(); if (didPauseMainAudSource) { StartCoroutine(FadeSong(audSource, 0, 1)); audSource.UnPause(); didPauseMainAudSource = false; } };
-    Prompts.PreparePrompt(snippetPrompt);
+    Prompts.PreparePrompt(snippetPrompt, true);
     GameObject spectrumObj = new GameObject("img");
-    spectrumObj.transform.SetParent(snippetPrompt.associatedPrefab.GetComponent<PromptPanel>().textBehaviour.transform);
+    spectrumObj.transform.SetParent(snippetPrompt.promptPanel.textBehaviour.transform);
     RectTransform rectTr = spectrumObj.AddComponent<RectTransform>();
     rectTr.sizeDelta = new Vector2(300, 300);
     rectTr.localScale = new Vector3(100, 100, 100);
@@ -142,8 +126,9 @@ public class MusicSelection : MonoBehaviour
     {
       mainMusicPath = PlayerPrefs.GetString("mainMusicPath");
     }
-    FillPreloadedSongList();
-    LoadSongsFromFolder();
+    //FillPreloadedSongList();
+    //StartLoadingSongsInfo();
+    //LoadSongsFromFolder();
 
     if (PlayerPrefs.GetString("recentMusic") != "")
     {
@@ -560,11 +545,14 @@ public class MusicSelection : MonoBehaviour
     audSource.volume = endVolume;
   }
 
-  public void ToggleAudSourceStatus(AudioSource source){
-    if(source.isPlaying){
+  public void ToggleAudSourceStatus(AudioSource source)
+  {
+    if (source.isPlaying)
+    {
       source.Pause();
     }
-    else {
+    else
+    {
       source.Play();
     }
   }
@@ -590,7 +578,7 @@ public class MusicSelection : MonoBehaviour
     invokedPrompt.Close();
     if (didPauseMainAudSource) { StartCoroutine(FadeSong(audSource, 0, 1)); audSource.UnPause(); didPauseMainAudSource = false; }
   }
-  Prompt snippetPrompt, analysisOptionsPrompt;
+  Prompt snippetPrompt;
   IEnumerator fadeIn, fadeOut, controlSnippet;
   public void PlaySongSnippet(string path, float snippetStart = 50f, float snippetLength = 30f)
   {
@@ -629,12 +617,6 @@ public class MusicSelection : MonoBehaviour
       // StartCoroutine(ActionAfterCoroutineWrapper(FadeOutSong(), () => { promptAudSource.Stop(); }));
     }));
   }
-
-  public void OpenAnalysisSettings()
-  {
-    analysisOptionsPrompt.Show();
-  }
-
 
   public void RefreshSceneInfo()
   {
@@ -818,6 +800,105 @@ public class MusicSelection : MonoBehaviour
       return fileName;
     return $"<color={htmlColor}>{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(songName)}</color> <color=#7d7575>by</color> <color=#c9bebe>{author}</color>";
   }
+  IEnumerator songLoadingCoroutine;
+
+  public void StopLoadingSongsInfo()
+  {
+    if (songLoadingCoroutine != null)
+      StopCoroutine(songLoadingCoroutine);
+    ClearList(customMusicPrefabParent);
+  }
+  public void StartLoadingSongsInfo(string searchText = "")
+  {
+    StopLoadingSongsInfo();
+    songLoadingCoroutine = LoadSongsInfo(searchText);
+    StartCoroutine(songLoadingCoroutine);
+  }
+
+  public IEnumerator LoadSongsInfo(string searchText = "")
+  {
+    if (!Directory.Exists(mainMusicPath))
+    {
+      Directory.CreateDirectory(mainMusicPath);
+    }
+    List<string> allMusic = Directory.GetFiles(mainMusicPath, "*.mp3").ToList();
+
+    if (searchText != "")
+    {
+      foreach (string t in allMusic.ToList())
+      {
+        if (!Path.GetFileNameWithoutExtension(t).ToLower().Contains(searchText.ToLower()))
+        {
+          allMusic.Remove(t);
+        }
+      }
+    }
+
+    foreach (string t in allPreloadedSongs)
+    {
+      if (searchText != "" && !Path.GetFileNameWithoutExtension(t).ToLower().Contains(searchText.ToLower()))
+        continue;
+      else
+      {
+        GameObject prefab = Instantiate(musicPrefab, customMusicPrefabParent);
+        Button songPlayBtn = prefab.transform.GetChild(0).GetChild(0).gameObject.GetComponent<Button>();
+
+        songPlayBtn.gameObject.GetComponent<Image>().sprite = altMusicPrefabBtnSprite;
+
+        songPlayBtn.onClick.AddListener(delegate
+        {
+          string songPath = $"PreloadedSongs/Songs/{Path.GetFileNameWithoutExtension(t)}/" + Path.GetFileNameWithoutExtension(t);
+          audSource.clip = Resources.Load(songPath) as AudioClip;
+          audSource.Stop();
+          GetAudioData();
+          LoadInformation();
+          foreach (SpectrumObjects t in spectrumObjects)
+          {
+            ClearSpectrum(t);
+            CreateSpectrumNew(t);
+          }
+          PlayerPrefs.SetString("recentMusic", songPath);
+        });
+        prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = GetColoredSongNameAuthorFromFilename(Path.GetFileNameWithoutExtension(t));
+
+        prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<Button>().enabled = false;//onClick.AddListener(delegate { inputSearchString.text = $"<author>{author}</author>"; SearchOnThatSite(inputSearchString); });
+
+        prefab.transform.GetChild(1).GetChild(1).gameObject.GetComponent<TextMeshProUGUI>().text = "";
+        songPlayBtn.gameObject.SetActive(true);
+
+        prefab.SetActive(true);
+
+        Destroy(prefab.transform.GetChild(3).gameObject);
+        yield return null;
+      }
+    }
+
+    for (int i = 0; i < allMusic.Count; i++)
+    {
+      string songName = Path.GetFileNameWithoutExtension(allMusic[i]);
+
+      GameObject prefab = Instantiate(musicPrefab, customMusicPrefabParent);
+      string temp = allMusic[i];
+      Button songPlayBtn = prefab.transform.GetChild(0).GetChild(0).gameObject.GetComponent<Button>();
+
+      songPlayBtn.gameObject.GetComponent<Image>().sprite = altMusicPrefabBtnSprite;
+
+      songPlayBtn.onClick.AddListener(delegate { StartCoroutine(LoadAndApplySongFromPath(temp)); });
+      prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = GetColoredSongNameAuthorFromFilename(songName);
+
+      prefab.transform.GetChild(1).GetChild(0).gameObject.GetComponent<Button>().enabled = false;
+
+      prefab.transform.GetChild(1).GetChild(1).gameObject.GetComponent<TextMeshProUGUI>().text = "";
+      songPlayBtn.gameObject.SetActive(true);
+      prefab.GetComponent<DeleteFile>().filePath = temp;
+      prefab.transform.GetChild(3).gameObject.GetComponent<Button>().onClick.AddListener(delegate { prefab.GetComponent<Animator>().Play("music_prefab_deletion"); });
+      prefab.transform.GetChild(3).gameObject.SetActive(true);
+      prefab.transform.GetChild(4).gameObject.GetComponent<Button>().onClick.AddListener(delegate { PlaySongSnippet(temp); });
+      prefab.SetActive(true);
+      yield return null;
+    }
+  }
+
 
   public void LoadSongsFromFolder(string searchText = "")
   {
@@ -830,10 +911,10 @@ public class MusicSelection : MonoBehaviour
       Directory.CreateDirectory(mainMusicPath);
     }
     List<string> allMusic = Directory.GetFiles(mainMusicPath, "*.mp3").ToList();
-    foreach (string path in additionalMusicPaths)
-    {
-      allMusic.AddRange(Directory.GetFiles(path, "*.mp3"));
-    }
+    // foreach (string path in additionalMusicPaths)
+    // {
+    //   allMusic.AddRange(Directory.GetFiles(path, "*.mp3"));
+    // }
 
     if (searchText != "")
     {

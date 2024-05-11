@@ -92,6 +92,7 @@ public class EventClass<T> : IEventInterface
 }
 public class ButtonAltAction : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler
 {
+  [TextArea(10, 20)]
   public string title;
   static float secondsToHold = 0.3f;
   [HideInInspector]

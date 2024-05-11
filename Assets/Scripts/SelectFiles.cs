@@ -92,7 +92,7 @@ public class SelectFiles : MonoBehaviour
             if (File.Exists(ProjectManager.GetProperPath(songsPath, t + ".mp3")))
             {
               Prompts.QuickPrompt($"Song {t} was successfully copied!");
-              musicSelection.LoadSongsFromFolder();
+              musicSelection.StartLoadingSongsInfo();
             }
           });
         });
@@ -109,7 +109,7 @@ public class SelectFiles : MonoBehaviour
         {
           Prompt confirmSuccess = new Prompt(PromptType.StrictPanel);
           confirmSuccess.promptText = $"Song {extensionlessSongName} was successfully copied!";
-          musicSelection.LoadSongsFromFolder();
+          musicSelection.StartLoadingSongsInfo();
           confirmSuccess.CloseAfter(1f);
           confirmSuccess.Show();
         }
@@ -174,17 +174,7 @@ public class SelectFiles : MonoBehaviour
       musicSelection.mainMusicPath = directoryPath;
       PlayerPrefs.SetString("mainMusicPath", directoryPath);
       Prompts.QuickStrictPrompt($"Folder {directoryPath} was successfully selected!");
-      musicSelection.LoadSongsFromFolder();
-    }
-  }
-  //for future
-  void AddNewMusicPath(string directoryPath)
-  {
-    if (Directory.Exists(directoryPath) && !musicSelection.additionalMusicPaths.Contains(directoryPath))
-    {
-      musicSelection.additionalMusicPaths.Add(directoryPath);
-      Prompts.QuickStrictPrompt($"Folder {directoryPath} was successfully added!");
-      musicSelection.LoadSongsFromFolder();
+      musicSelection.StartLoadingSongsInfo();
     }
   }
 

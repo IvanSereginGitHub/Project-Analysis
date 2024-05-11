@@ -44,6 +44,7 @@ public class Prompt
     /// Contains generated panel. Don't know why I did call it like that :/
     /// </summary>
     public GameObject associatedPrefab;
+    public PromptPanel promptPanel;
     public void ResetActions()
     {
         ok_action = null;
@@ -229,7 +230,7 @@ public class Prompts : MonoBehaviour
             Prompts.QuickStrictPrompt("Prompts error: You are trying to update uninitialized prompt. Call PreparePrompt first.");
             return;
         }
-        PromptPanel promptPanel = prompt.associatedPrefab.GetComponent<PromptPanel>();
+        PromptPanel promptPanel = prompt.promptPanel;
         Button _ok = promptPanel.ok_button, _cancel = promptPanel.cancel_button, _exit = promptPanel.close_button;
         TextMeshProUGUI _promptText = promptPanel.promptText;
 
@@ -265,7 +266,7 @@ public class Prompts : MonoBehaviour
     /// Hint: use this method with variable prompt.keepAlive to add custom objects for panel and keep them until panel is destroyed.
     /// </summary>
     /// <param name="prompt"></param>
-    public static void PreparePrompt(Prompt prompt)
+    public static void PreparePrompt(Prompt prompt, bool keepAlive = false)
     {
         if (canvasParent == null)
         {
@@ -343,6 +344,8 @@ public class Prompts : MonoBehaviour
             }
         }
         prompt.associatedPrefab = panel;
+        prompt.promptPanel = promptPanel;
+        prompt.keepAlive = keepAlive;
         UpdatePrompt(prompt);
         // promptPanel.transform.GetChild(0).gameObject.GetComponent<Button>().enabled = prompt.closeOnBgClick;
 
