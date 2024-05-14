@@ -25,6 +25,24 @@ public class SelectFiles : MonoBehaviour
     }
   }
 
+  public void SaveFile(byte[] bytes, string filename)
+  {
+    if (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor)
+    {
+      Prompts.ShowQuickStrictPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...");
+      StartCoroutine(Delays.DelayAction(1f, () => { SaveFileAsWindows(bytes, filename); }));
+    }
+    else if (Application.platform == RuntimePlatform.Android)
+    {
+      Prompts.ShowQuickStrictPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...");
+      StartCoroutine(Delays.DelayAction(1f, () => { SaveFileAsMobile(bytes, filename); }));
+    }
+    else
+    {
+      Prompts.ShowQuickExitOnlyPrompt($"Various file system operations on this ({Application.platform}) platform <color=red><b>are not implemented yet</b></color>!", out _);
+    }
+  }
+
   public void SelectFolder()
   {
     if (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor)
@@ -137,6 +155,21 @@ public class SelectFiles : MonoBehaviour
     StandaloneFileBrowser.OpenFolderPanelAsync("Select folder", "", false, (string[] paths) => { StartCoroutine(Delays.DelayAction(0.2f, () => { if (paths.Length > 0) ApplyNewMusicPath(paths[0]); })); });
   }
 
+  void SaveFileAsWindows(byte[] bytes, string filename)
+  {
+    StandaloneFileBrowser.SaveFilePanelAsync("Сохранить результат", "", filename, ".png", (string path) =>
+    {
+      File.WriteAllBytes(path, bytes);
+      Debug.Log("Done");
+    });
+  }
+
+  void SaveFileAsMobile(byte[] bytes, string filename)
+  {
+    string filePath = Path.Combine(Application.temporaryCachePath, filename);
+    File.WriteAllBytes(filePath, bytes);
+    NativeFilePicker.Permission permission = NativeFilePicker.ExportFile(filePath, (success) => Debug.Log("File exported: " + success));
+  }
   void SelectFileMobile()
   {
     NativeFilePicker.Permission permission = NativeFilePicker.PickFile((path) =>

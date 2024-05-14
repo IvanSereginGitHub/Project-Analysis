@@ -89,6 +89,7 @@ public class MusicSelection : MonoBehaviour
   public Sprite snippetSprite;
   public GameObject snippetSpectrumPrefab;
   bool didPauseMainAudSource = false;
+  public AudioAnalyzer audAnalyzer;
   private void Awake()
   {
     fadeIn = FadeSong(null, 0, 0);
@@ -627,6 +628,7 @@ public class MusicSelection : MonoBehaviour
       ClearSpectrum(t);
       CreateSpectrumNew(t);
     }
+    audAnalyzer.StartAnalyzingSong();
   }
 
   public IEnumerator SongLoadWrapper(string path, bool saveAsRecent = true, System.Action callback = null)

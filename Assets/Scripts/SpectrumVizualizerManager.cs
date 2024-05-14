@@ -18,6 +18,8 @@ public class SpectrumVizualizerManager : MonoBehaviour
     float[] samples = new float[1024];
     Transform[] objects = new Transform[0];
 
+    public bool useInverseSamples = false;
+
 
     public void Regenerate()
     {
@@ -28,7 +30,10 @@ public class SpectrumVizualizerManager : MonoBehaviour
         distance = Math.Abs(startPosition - endPosition) / beatCount;
         ClearArray();
         FillArray();
-        VizualizeSpectrum();
+        if (!useInverseSamples)
+            VizualizeSpectrum();
+        else
+            VizualizeSamples();
     }
 
     private void Start()
@@ -51,13 +56,17 @@ public class SpectrumVizualizerManager : MonoBehaviour
         {
             objects[i] = Instantiate(prefab, prefParent).transform;
             objects[i].localPosition = new Vector3(startPosition + distance * i, 0, 0);
+            objects[i].localScale = new Vector2(5, 5);
         }
     }
-
+    double[] reversedSamples;
     private void Update()
     {
         audSource.GetSpectrumData(samples, 0, FFTWindow.Blackman);
-        VizualizeSpectrum();
+        if (!useInverseSamples)
+            VizualizeSpectrum();
+        else
+            VizualizeSamples();
     }
     float AverageFromSamplesRange(int start, int length)
     {
@@ -73,6 +82,16 @@ public class SpectrumVizualizerManager : MonoBehaviour
         for (int i = 0; i < objects.Length; i++)
         {
             objects[i].localScale = new Vector3(defaultWidthMultiplier, sizeMultiplier * AverageFromSamplesRange(countMultiplier * i, countMultiplier), 0);
+        }
+    }
+
+    void VizualizeSamples()
+    {
+        reversedSamples = AnalysisFunctions.PerformInverseFFT(FastFourierTransform.ConvertFloatToComplex(samples));
+        for (int i = 0; i < objects.Length; i++)
+        {
+            objects[i].localPosition = new Vector2(objects[i].localPosition.x, Convert.ToSingle(reversedSamples[i] * sizeMultiplier));
+            //objects[i].localScale = new Vector3(defaultWidthMultiplier, sizeMultiplier * AverageFromSamplesRange(countMultiplier * i, countMultiplier), 0);
         }
     }
 }

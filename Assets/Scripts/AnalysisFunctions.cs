@@ -106,6 +106,10 @@ public class AnalysisFunctions : MonoBehaviour
       signal = Shift(signal);
     return FFT(signal);
   }
+  public static Double[] PerformInverseFFT(Complex[] x)
+  {
+    return Inverse_FFT(x);
+  }
   public static Double[] SignalPackBoth(Double[] x)
   {
     int M = x.Length;
