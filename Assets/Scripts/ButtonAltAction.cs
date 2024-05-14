@@ -105,7 +105,7 @@ public class ButtonAltAction : MonoBehaviour, IPointerClickHandler, IPointerDown
   {
     if (eventData.button == PointerEventData.InputButton.Right)
     {
-      Prompts.QuickAltSettingsPrompt(title, eventClasses.ToList<IEventInterface>());
+      Prompts.ShowQuickAltSettingsPrompt(title, eventClasses.ToList<IEventInterface>());
     }
   }
 
@@ -128,7 +128,7 @@ public class ButtonAltAction : MonoBehaviour, IPointerClickHandler, IPointerDown
     }
     if (timer > secondsToHold)
     {
-      Prompts.QuickAltSettingsPrompt(title, eventClasses.ToList<IEventInterface>());
+      Prompts.ShowQuickAltSettingsPrompt(title, eventClasses.ToList<IEventInterface>());
       isHolding = false;
       timer = 0;
     }

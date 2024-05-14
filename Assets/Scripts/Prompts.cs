@@ -148,7 +148,7 @@ public class Prompts : MonoBehaviour
         prompt.Show();
     }
 
-    public static void QuickCancelOnlyPrompt(string text)
+    public static void ShowQuickExitOnlyPrompt(string text)
     {
         Prompt prompt = new Prompt
         {
@@ -158,7 +158,7 @@ public class Prompts : MonoBehaviour
         prompt.Show();
     }
 
-    public static void QuickCancelOnlyPrompt(TextAsset text)
+    public static void ShowQuickExitOnlyPrompt(TextAsset text)
     {
         Prompt prompt = new Prompt
         {
@@ -168,7 +168,7 @@ public class Prompts : MonoBehaviour
         prompt.Show();
     }
 
-    public static void QuickCancelOnlyPrompt(string text, out Prompt prompt)
+    public static void ShowQuickExitOnlyPrompt(string text, out Prompt prompt)
     {
         prompt = new Prompt
         {
@@ -182,7 +182,7 @@ public class Prompts : MonoBehaviour
     /// </summary>
     /// <param name="events"></param>
     /// <returns></returns>
-    public static Prompt QuickAltSettingsPrompt(List<IEventInterface> events)
+    public static Prompt ShowQuickAltSettingsPrompt(List<IEventInterface> events)
     {
         Prompt prompt = new Prompt
         {
@@ -199,7 +199,7 @@ public class Prompts : MonoBehaviour
     /// <param name="headerText"></param>
     /// <param name="events"></param>
     /// <returns></returns>
-    public static Prompt QuickAltSettingsPrompt(string headerText, List<IEventInterface> events)
+    public static Prompt ShowQuickAltSettingsPrompt(string headerText, List<IEventInterface> events)
     {
         Prompt prompt = new Prompt
         {
@@ -211,11 +211,20 @@ public class Prompts : MonoBehaviour
         return prompt;
     }
 
-    public static Prompt QuickStrictPrompt(string headerText, float closingTime = 1f)
+    public static Prompt ShowQuickStrictPrompt(string headerText, float closingTime = 1f)
     {
         Prompt prompt = new Prompt(PromptType.StrictPanel);
         prompt.promptText = headerText;
         prompt.closingTime = closingTime;
+        prompt.Show();
+        return prompt;
+    }
+
+    public static Prompt ShowQuickStrictPrompt(string headerText)
+    {
+        Prompt prompt = new Prompt(PromptType.StrictPanel);
+        prompt.promptText = headerText;
+        prompt.closingTime = 1f;
         prompt.Show();
         return prompt;
     }
@@ -227,7 +236,7 @@ public class Prompts : MonoBehaviour
     {
         if (prompt.associatedPrefab == null)
         {
-            Prompts.QuickStrictPrompt("Prompts error: You are trying to update uninitialized prompt. Call PreparePrompt first.");
+            Prompts.ShowQuickStrictPrompt("Prompts error: You are trying to update uninitialized prompt. Call PreparePrompt first.");
             return;
         }
         PromptPanel promptPanel = prompt.promptPanel;

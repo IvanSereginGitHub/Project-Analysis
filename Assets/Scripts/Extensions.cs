@@ -10,6 +10,28 @@ using UnityEngine.UI;
 
 public static class Extensions
 {
+  public static Vector3 Round(this Vector3 vector3, int decimalPlaces = 2)
+  {
+    float multiplier = 1;
+    for (int i = 0; i < decimalPlaces; i++)
+    {
+      multiplier *= 10f;
+    }
+    return new Vector3(
+      Mathf.Round(vector3.x * multiplier) / multiplier,
+      Mathf.Round(vector3.y * multiplier) / multiplier,
+      Mathf.Round(vector3.z * multiplier) / multiplier);
+  }
+
+  public static float Round(this float value, int decimalPlaces = 2)
+  {
+    float multiplier = 1;
+    for (int i = 0; i < decimalPlaces; i++)
+    {
+      multiplier *= 10f;
+    }
+    return Mathf.Round(value * multiplier) / multiplier;
+  }
   public static int ToInt(this bool value)
   {
     return value ? 1 : 0;
@@ -25,7 +47,7 @@ public static class Extensions
     return snapValue * Mathf.Round((input / snapValue));
   }
 
- 
+
   public static string RemoveLastCharacters(this string str, int count)
   {
     if (count <= 0)

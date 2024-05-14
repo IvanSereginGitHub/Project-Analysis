@@ -19,6 +19,8 @@ public class SpectrumBarManager : MonoBehaviour
 
     public void ChangeMaskWidth(float val)
     {
+        if (completedMaskTransform == null || completedSpectrumTransform == null)
+            return;
         SetRight(completedMaskTransform, completedMaskTransform.offsetMin.x * Mathf.Clamp(val / slider.maxValue, 0, slider.maxValue));
         SetRight(completedSpectrumTransform, completedMaskTransform.offsetMax.x + completedMaskTransform.offsetMin.x);
     }
@@ -32,8 +34,9 @@ public class SpectrumBarManager : MonoBehaviour
             ChangeMaskWidth(audSource.time);
         }
     }
-    public void FindAndPlaySnippet() {
-        
+    public void FindAndPlaySnippet()
+    {
+
     }
     public void SetRight(RectTransform rt, float right)
     {

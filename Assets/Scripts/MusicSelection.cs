@@ -600,7 +600,7 @@ public class MusicSelection : MonoBehaviour
       }
       else if (clip.length < 5f)
       {
-        Prompts.QuickStrictPrompt("Sorry, song is too short for playing the snippet.");
+        Prompts.ShowQuickStrictPrompt("Sorry, song is too short for playing the snippet.");
         return;
       }
       fadeIn = FadeSong(snippetAudSource, 0, 1);

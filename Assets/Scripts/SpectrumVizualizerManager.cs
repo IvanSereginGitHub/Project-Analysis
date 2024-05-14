@@ -18,7 +18,8 @@ public class SpectrumVizualizerManager : MonoBehaviour
     float[] samples = new float[1024];
     Transform[] objects = new Transform[0];
 
-    private void Start()
+
+    public void Regenerate()
     {
         if (countMultiplier == 0)
         {
@@ -28,6 +29,11 @@ public class SpectrumVizualizerManager : MonoBehaviour
         ClearArray();
         FillArray();
         VizualizeSpectrum();
+    }
+
+    private void Start()
+    {
+        Regenerate();
     }
     void ClearArray()
     {
@@ -56,9 +62,9 @@ public class SpectrumVizualizerManager : MonoBehaviour
     float AverageFromSamplesRange(int start, int length)
     {
         float avg = 0;
-        for (int i = start; i < start+length; i++)
+        for (int i = start; i < start + length; i++)
         {
-            avg+= samples[i];
+            avg += samples[i];
         }
         return avg / length;
     }

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using TMPro;
 using UnityEngine;
@@ -47,7 +48,15 @@ public class AudioAnalyzer : MonoBehaviour
 
   public List<GameObject> analysisSettings = new List<GameObject>();
   Prompt analysisOptionsPrompt;
+  [Header("SPECTROGRAM SETTINGS")]
   public RawImage spectrogramTexture;
+
+  public Gradient spectrogramGradient;
+  public float spectrogramMultiply, spectrogramDBOffset;
+
+  public float spectogramDefaultWidth = 1024, spectogramDefaultHeight = 1024;
+  [Range(1, 8)]
+  public int spectrogramWidthMultiplier, spectrogramHeightMultiplier;
   public void Start()
   {
     analysisOptionsPrompt = new Prompt(PromptType.ExitOnly);
@@ -149,7 +158,7 @@ public class AudioAnalyzer : MonoBehaviour
           //i += segmentsSampleLength * (segmenterSmoothingWindowSize + 1);
         }
         float approx_time = ConvertSampleIndexToTime(i, splittedSamples.Length, clipLength);
-        min_times.Add(approx_time);
+        min_times.Add(approx_time.Round(1));
       }
 
       if (!preserveLastDiffValueAsCompare)
@@ -158,7 +167,12 @@ public class AudioAnalyzer : MonoBehaviour
     }
     return min_times;
   }
-  public Color32[] GenerateSpectrogram(int width, int height, float[] samples, bool convertToDb = true)
+
+  public Color GetGradientColor(Gradient gradient, float value)
+  {
+    return gradient.Evaluate(value);
+  }
+  public Color32[] GenerateSpectrogram(int width, int height, float[] samples, bool convertToDb = false, bool fixDualChannelBug = true)
   {
     int numFrames = samples.Length / width;
     Color32[] pixels = new Color32[width * height];
@@ -175,21 +189,24 @@ public class AudioAnalyzer : MonoBehaviour
         frame[j] = samples[ind];
       }
 
-      System.Numerics.Complex[] complexes = FastFourierTransform.ConvertFloatToComplex(frame);
-      FastFourierTransform.FFT(complexes);
-      Debug.Log(complexes.Length);
+      Complex[] complexes = AnalysisFunctions.PerformFFT(Array.ConvertAll(frame, Convert.ToDouble));
       double[] magnitudes = new double[complexes.Length / 2];
+      if (fixDualChannelBug)
+        magnitudes = new double[complexes.Length / 4];
+
       for (int l = 0; l < magnitudes.Length; l++)
       {
         magnitudes[l] = complexes[l].Magnitude;
         if (convertToDb)
-          magnitudes[l] = 20 * Math.Log10(magnitudes[l]); // convert to db
+          magnitudes[l] = 20 * Math.Log10(magnitudes[l]) + spectrogramDBOffset; // convert to db
       }
 
       for (int y = 0; y < magnitudes.Length; y++)
       {
-        float intensity = (float)magnitudes[y];
-        pixels[x + y * width] = new Color(intensity, intensity, intensity);
+        float intensity = (float)magnitudes[y] * spectrogramMultiply;
+        //Debug.Log(intensity);
+
+        pixels[x + y * width] = GetGradientColor(spectrogramGradient, intensity);
       }
     }
     return pixels;
@@ -274,7 +291,7 @@ public class AudioAnalyzer : MonoBehaviour
   {
     if (segments.Count < 1)
     {
-      Prompts.QuickStrictPrompt("Analyze song segments first!");
+      Prompts.ShowQuickStrictPrompt("Analyze song segments first!");
       return;
     }
     audSource.Stop();
@@ -427,13 +444,13 @@ public class AudioAnalyzer : MonoBehaviour
 
   public void StartAnalyzingSong()
   {
-    if (isRunningAnalysis) { Prompts.QuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
+    if (isRunningAnalysis) { Prompts.ShowQuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
     StartCoroutine(AnalyzeSong(null));
   }
 
   public void StartAnalyzingSong(float[] totalSamples = null)
   {
-    if (isRunningAnalysis) { Prompts.QuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
+    if (isRunningAnalysis) { Prompts.ShowQuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
     StartCoroutine(AnalyzeSong(totalSamples));
   }
   bool isRunningAnalysis = false;
@@ -446,7 +463,7 @@ public class AudioAnalyzer : MonoBehaviour
     // }
     if (audSource.clip == null)
     {
-      Prompts.QuickStrictPrompt("Load audiofile first!");
+      Prompts.ShowQuickStrictPrompt("Load audiofile first!");
       yield break;
     }
     float clipLength = audSource.clip.length;
@@ -471,7 +488,8 @@ public class AudioAnalyzer : MonoBehaviour
     hideOnLoadingImage.enabled = false;
     int stored_sample_length = segmentsSampleLength;
 
-
+    spectrogramTexture.rectTransform.sizeDelta = new UnityEngine.Vector2(spectogramDefaultWidth * spectrogramWidthMultiplier, spectogramDefaultHeight * spectrogramHeightMultiplier);
+    Debug.LogObjects((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height);
     Texture2D specTex = new Texture2D((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
     Color32[] colorsArr = new Color32[0];
     int tex_width = specTex.width;
@@ -491,7 +509,7 @@ public class AudioAnalyzer : MonoBehaviour
       // segments = SegmenterAnalyzer(totalSamples, clipLength);
       // Debug.Log("finishing");
     });
-
+    myThread.IsBackground = true;
     myThread.Start();
     while (myThread.IsAlive)
     {

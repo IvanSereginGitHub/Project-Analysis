@@ -11,17 +11,17 @@ public class SelectFiles : MonoBehaviour
   {
     if (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor)
     {
-      Prompts.QuickStrictPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...");
+      Prompts.ShowQuickStrictPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...");
       StartCoroutine(Delays.DelayAction(1f, () => { SelectFileWindows(); }));
     }
     else if (Application.platform == RuntimePlatform.Android)
     {
-      Prompts.QuickStrictPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...");
+      Prompts.ShowQuickStrictPrompt("Use an Explorer window to select audio file from any path.\nIt will be copied to the game's local music folder after.\n\n<u>Notes:</u>\n1.Songs should be in *.mp3 format to properly work (might add *.wav support in the future).\n2.Remember about <color=yellow>copyrights</color>...");
       StartCoroutine(Delays.DelayAction(1f, () => { SelectFileMobile(); }));
     }
     else
     {
-      Prompts.QuickCancelOnlyPrompt($"Various file system operations on this ({Application.platform}) platform <color=red><b>are not implemented yet</b></color>!", out _);
+      Prompts.ShowQuickExitOnlyPrompt($"Various file system operations on this ({Application.platform}) platform <color=red><b>are not implemented yet</b></color>!", out _);
     }
   }
 
@@ -29,17 +29,17 @@ public class SelectFiles : MonoBehaviour
   {
     if (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor)
     {
-      Prompts.QuickStrictPrompt("Use an Explorer window to select folder path that will be used for scanning.");
+      Prompts.ShowQuickStrictPrompt("Use an Explorer window to select folder path that will be used for scanning.");
       StartCoroutine(Delays.DelayAction(1f, () => { SelectFolderWindows(); }));
     }
     else if (Application.platform == RuntimePlatform.Android)
     {
-      Prompts.QuickStrictPrompt("Use an Explorer window to select folder path that will be used for scanning.\n\n\nPlease note: Android & iOS do not allow you to select folders directly, compared to systems like Windows.\nPlease, add your music manually to desired folder and select this file via file explorer. It's folder will be added.", 5f);
+      Prompts.ShowQuickStrictPrompt("Use an Explorer window to select folder path that will be used for scanning.\n\n\nPlease note: Android & iOS do not allow you to select folders directly, compared to systems like Windows.\nPlease, add your music manually to desired folder and select this file via file explorer. It's folder will be added.", 5f);
       StartCoroutine(Delays.DelayAction(5f, () => { SelectFolderMobile(); }));
     }
     else
     {
-      Prompts.QuickCancelOnlyPrompt($"Various file system operations on this ({Application.platform}) platform <color=red><b>are not implemented yet</b></color>!", out _);
+      Prompts.ShowQuickExitOnlyPrompt($"Various file system operations on this ({Application.platform}) platform <color=red><b>are not implemented yet</b></color>!", out _);
     }
   }
   void PromptAfter(string[] path)
@@ -96,7 +96,7 @@ public class SelectFiles : MonoBehaviour
             }
           });
         });
-        Prompts.QuickAltSettingsPrompt($"Enter the song name without extension (Previous name: <color=yellow>{extensionlessSongName}</color>):", new List<IEventInterface>
+        Prompts.ShowQuickAltSettingsPrompt($"Enter the song name without extension (Previous name: <color=yellow>{extensionlessSongName}</color>):", new List<IEventInterface>
         {
             new EventClass<string>("New song name...", fieldEvent, EventType.inputField),
             new EventClass("Rename", buttonEvent, EventType.button)
@@ -120,7 +120,7 @@ public class SelectFiles : MonoBehaviour
     };
     prompt.cancel_action = delegate
     {
-      StartCoroutine(musicSelection.SongLoadWrapper(path[0], false, () => { Prompts.QuickStrictPrompt($"Music was loaded from selected path."); }));
+      StartCoroutine(musicSelection.SongLoadWrapper(path[0], false, () => { Prompts.ShowQuickStrictPrompt($"Music was loaded from selected path."); }));
     };
     prompt.okName = "Save";
     prompt.cancelName = "Load";
@@ -173,7 +173,7 @@ public class SelectFiles : MonoBehaviour
     {
       musicSelection.mainMusicPath = directoryPath;
       PlayerPrefs.SetString("mainMusicPath", directoryPath);
-      Prompts.QuickStrictPrompt($"Folder {directoryPath} was successfully selected!");
+      Prompts.ShowQuickStrictPrompt($"Folder {directoryPath} was successfully selected!");
       musicSelection.StartLoadingSongsInfo();
     }
   }
