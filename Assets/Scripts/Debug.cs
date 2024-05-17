@@ -29,10 +29,13 @@ public class Debug : UnityEngine.Debug
   {
     UnityEngine.Debug.Log($"[{string.Join(separator, list)}] ({list.Count()})");
   }
-  [HideInCallstack]
   public static string ListToString<T>(IEnumerable<T> list)
   {
     return $"[{string.Join(separator, list)}] ({list.Count()})";
+  }
+  public static string ArrayToString<T>(T[] array)
+  {
+    return $"[{string.Join(separator, array)}] ({array.Length})";
   }
   [HideInCallstack]
   public static void LogDictionary<K, V>(Dictionary<K, V> dictionary)

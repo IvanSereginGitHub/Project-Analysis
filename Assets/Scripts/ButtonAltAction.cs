@@ -70,14 +70,16 @@ public class EventClass<T> : IEventInterface
 {
   public string name;
   public List<EventMethodsClass<T>> methods;
+  public T defaultValue;
   public EventType Type { get { return evType; } set { evType = value; } }
   [SerializeField]
   private EventType evType;
-  public EventClass(string n, List<EventMethodsClass<T>> e, EventType type)
+  public EventClass(string n, List<EventMethodsClass<T>> e, EventType type, T defVal)
   {
     name = n;
     methods = e;
     evType = type;
+    defaultValue = defVal;
   }
 
   public void InvokeAll(T param)

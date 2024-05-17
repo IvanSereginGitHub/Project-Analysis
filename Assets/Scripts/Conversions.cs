@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using UnityEngine;
 
@@ -46,7 +47,6 @@ public class Conversions : MonoBehaviour
     {
       tmp = refString;
     }
-    //Debug.Log(tmp);
     return tmp;
   }
 
@@ -68,12 +68,17 @@ public class Conversions : MonoBehaviour
 
   public static float NextElementIn_Float(ref string refString, string breakStr)
   {
-    return float.Parse(NextElementIn(ref refString, breakStr));
+    return float.Parse(NextElementIn(ref refString, breakStr), CultureInfo.InvariantCulture);
+  }
+
+  public static double NextElementIn_Double(ref string refString, string breakStr)
+  {
+    return double.Parse(NextElementIn(ref refString, breakStr));
   }
 
   public static float NextElementIn_Float(ref string refString, string breakStr, string altBreakStr)
   {
-    return float.Parse(NextElementIn(ref refString, breakStr, altBreakStr));
+    return float.Parse(NextElementIn(ref refString, breakStr, altBreakStr), CultureInfo.InvariantCulture);
   }
 
   public static int NextElementIn_Int(ref string refString, string breakStr)
@@ -235,8 +240,8 @@ public class Conversions : MonoBehaviour
         return new Vector2(x, y);
       string w = NextElementIn(ref source, ",", ")");
       if (w == "" || vectorType == typeof(Vector3))
-        return new Vector3(x, y, float.Parse(z));
-      return new Vector4(x, y, float.Parse(z), float.Parse(w));
+        return new Vector3(x, y, float.Parse(z, CultureInfo.InvariantCulture));
+      return new Vector4(x, y, float.Parse(z, CultureInfo.InvariantCulture), float.Parse(w, CultureInfo.InvariantCulture));
     }
     else
     {

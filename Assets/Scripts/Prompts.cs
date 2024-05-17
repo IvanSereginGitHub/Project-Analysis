@@ -203,7 +203,7 @@ public class Prompts : MonoBehaviour
     {
         Prompt prompt = new Prompt
         {
-            promptText = string.IsNullOrWhiteSpace(headerText) ? "Choose an action:" : headerText,
+            promptText = string.IsNullOrWhiteSpace(headerText) ? "Выберите действие:" : headerText,
             promptType = PromptType.ExitOnly
         };
         prompt.additionalObjects.AddRange(events);
@@ -341,6 +341,7 @@ public class Prompts : MonoBehaviour
                         TMP_InputField inputField = Instantiate((GameObject)Resources.Load("PromptInputField"), _promptResizeBehaviour.transform).GetComponent<TMP_InputField>();
                         inputField.onEndEdit.AddListener((string n) => { input.InvokeAll(n);/* inputField.transform.parent.parent.gameObject.GetComponent<Animator>().Play("ClosePromptAnim"); */});
                         inputField.placeholder.GetComponent<TextMeshProUGUI>().text = input.name;
+                        inputField.text = input.defaultValue;
                         EventSystem.current.SetSelectedGameObject(inputField.gameObject, null);
                         break;
                     case EventType.dropdown:

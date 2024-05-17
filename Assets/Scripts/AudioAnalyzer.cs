@@ -2,9 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -31,13 +33,11 @@ public class AudioAnalyzer : MonoBehaviour
 
 
   [Header("SEGMENTER SETTINGS")]
-  public float quitePartsThreshold = 0.1f;
-  public int segmentsSampleLength = 16384;
-  public float segmenterDifferenceThreshold = 0.3f;
-  //How many additional segments from right are required to calculate average?
-  public int segmenterSmoothingWindowSize = 3;
+  public int segmentsSampleLength = 1024; // Количество семплов, считающееся за один блок при анализе
+  public float segmenterDifferenceThreshold = 0.15f; // Значение разницы в звуке, которая обозначает появление нового сегмента
+  public int segmenterSmoothingWindowSize = 60; // Количество блоков, которые помогают усреднить и вычислить громкость следующего блока
   /// <summary>
-  /// Uses last found segment's average value diff as comparison for the next segments
+  /// Прогрессивное сканирование за счёт сохранения предыдущего значения сегмента и сравнения его с текущим
   /// </summary>
   public bool progressiveSegmentsFinding = false;
 
@@ -50,15 +50,18 @@ public class AudioAnalyzer : MonoBehaviour
   [SerializeField]
   Gradient spectrogramGradient;
   [SerializeField]
-  float spectrogramMultiply, spectrogramDBOffset;
+  float spectrogramMultiply, spectrogramDBOffset; // Коэффициенты, влияющие на яркость графика
   [SerializeField]
-  float spectogramDefaultWidth = 1024, spectogramDefaultHeight = 1024;
+  float spectogramDefaultWidth = 1024, spectogramDefaultHeight = 1024; // Стандартные размеры текстуры спектрограммы
   [Range(1, 8)]
-  public int spectrogramWidthMultiplier, spectrogramHeightMultiplier;
+  public int spectrogramWidthMultiplier, spectrogramHeightMultiplier; // Множители, увеличивающие размер спектрограммы.
+  [Range(1, 10)]
+  public int subThreadsAmount = 5; // Количество потоков, способное заниматься вычислением спектрограммы
   [SerializeField]
   List<GameObject> spectogramSettings = new List<GameObject>();
   [Header("SPECTRUM SETTINGS")]
   public List<GameObject> spectrumSettings = new List<GameObject>();
+  public RawImage spectrumTexture;
   public void Start()
   {
     analysisOptionsPrompt = new Prompt(PromptType.ExitOnly)
@@ -122,10 +125,15 @@ public class AudioAnalyzer : MonoBehaviour
   public SelectFiles selectFiles;
   public void ExportTextureToFile(RawImage tex)
   {
-    selectFiles.SaveFile((tex.texture as Texture2D).EncodeToPNG(), $"{tex.gameObject.name}.png");
+    selectFiles.SaveFile((tex.texture as Texture2D).EncodeToPNG(), $"{audSource.clip.name}_spectrogram.png");
   }
 
-  // Function for splitting audio into chunks
+  public void ExportJSONToFile(string text)
+  {
+    selectFiles.SaveFile(text, "export.json");
+  }
+
+  // Функция, занимающаяся разделением массива семплов на окна и вычисляющая их среднее значение
   public float[] AudioSplitter(float[] totalSamples, int segmentsSampleLength)
   {
     int arr_size = Mathf.CeilToInt(totalSamples.Length / segmentsSampleLength);
@@ -146,12 +154,13 @@ public class AudioAnalyzer : MonoBehaviour
     }
     return res;
   }
+  // Анализ сэмплов, которые были заранее обработаны функцией AudioSplitter
   public List<float> SegmentsAnalyzer_splitted(float[] splittedSamples, float clipLength)
   {
-    Debug.LogObjects("info:", segmentsSampleLength, segmenterDifferenceThreshold, segmenterSmoothingWindowSize);
+    // Debug.LogObjects("info:", segmentsSampleLength, segmenterDifferenceThreshold, segmenterSmoothingWindowSize);
     List<float> min_times = new List<float>();
     float previousAverage = 0f;
-    Debug.Log(splittedSamples.Length);
+    // Debug.Log(splittedSamples.Length);
     for (int i = 0; i < splittedSamples.Length; i++)
     {
       float average = splittedSamples[i];
@@ -187,14 +196,23 @@ public class AudioAnalyzer : MonoBehaviour
   {
     return gradient.Evaluate(value);
   }
-  public Color32[] GenerateSpectrogram(int width, int height, float[] samples, bool convertToDb = false, bool fixDualChannelBug = true)
+  public Color GetGradientColor(Gradient gradient, double value)
+  {
+    return gradient.Evaluate((float)value);
+  }
+  // Функция для создания спектрограммы
+  public Color32[] GenerateSpectrogram(int width, int height, float[] samples, int subthreadsAmount = 10, bool convertToDb = false, bool fixDualChannel = true)
   {
     int numFrames = samples.Length / width;
     Color32[] pixels = new Color32[width * height];
+    float[] frame = new float[height];
+
+    double[] magnitudes = new double[height / 2];
+    if (fixDualChannel)
+      magnitudes = new double[height / 4];
 
     for (int x = 0; x < width; x++)
     {
-      float[] frame = new float[height];
       int offset = x * numFrames;
 
       for (int j = 0; j < height; j++)
@@ -202,28 +220,21 @@ public class AudioAnalyzer : MonoBehaviour
         int ind = Math.Min(offset + j, samples.Length - 1);
         frame[j] = samples[ind];
       }
-
-      Complex[] complexes = AnalysisFunctions.PerformFFT(Array.ConvertAll(frame, Convert.ToDouble));
-      double[] magnitudes = new double[complexes.Length / 2];
-      if (fixDualChannelBug)
-        magnitudes = new double[complexes.Length / 4];
+      Complex[] complexes = FFT(ConvertFloatToComplex(frame));
 
       for (int l = 0; l < magnitudes.Length; l++)
       {
         magnitudes[l] = complexes[l].Magnitude;
         if (convertToDb)
           magnitudes[l] = 20 * Math.Log10(magnitudes[l]) + spectrogramDBOffset; // convert to db incase needed
-      }
+        float intensity = (float)magnitudes[l] * spectrogramMultiply;
 
-      for (int y = 0; y < magnitudes.Length; y++)
-      {
-        float intensity = (float)magnitudes[y] * spectrogramMultiply;
-
-        pixels[x + y * width] = GetGradientColor(spectrogramGradient, intensity);
+        pixels[x + l * width] = spectrogramGradient.Evaluate(intensity);
       }
     }
     return pixels;
   }
+  // Анализ сэмплов без предварительной обработки, гораздо медленнее
   public List<float> SegmenterAnalyzer(float[] totalSamples, float clipLength)
   {
     Debug.LogObjects("info:", segmentsSampleLength, segmenterDifferenceThreshold, segmenterSmoothingWindowSize);
@@ -267,18 +278,6 @@ public class AudioAnalyzer : MonoBehaviour
   {
     return totalTime * ((float)ind / totalSamplesLength);
   }
-  int FindNearestSegmentAt(float time)
-  {
-    for (int i = 0; i < segments.Count; i++)
-    {
-      if (segments[i].IsNearlyEqualTo(time, 0.01f))
-      {
-        return i;
-      }
-    }
-    return -1;
-  }
-
   public void PlaySongSnippet()
   {
     if (segments.Count < 1)
@@ -291,20 +290,25 @@ public class AudioAnalyzer : MonoBehaviour
     audSource.Play();
   }
 
-  Stopwatch timer;
+  Stopwatch stopwatch_timer;
 
-  void StartStopwatch(string message = "")
+  void StartStopwatch(Stopwatch timer)
   {
-    Debug.Log("Startwatch| " + message);
     timer = new Stopwatch();
     timer.Start();
   }
 
-  void StopStopwatch()
+  void StartStopwatch_current(Stopwatch timer)
+  {
+    timer.Reset();
+    timer.Start();
+  }
+
+  string StopStopwatch(Stopwatch timer)
   {
     timer.Stop();
     TimeSpan timeTaken = timer.Elapsed;
-    Debug.Log("Startwatch| Time taken:" + timeTaken.ToString(@"m\:ss\.f"));
+    return timeTaken.ToString(@"m\:ss\.f");
   }
 
   public List<float> GetSegments()
@@ -346,11 +350,6 @@ public class AudioAnalyzer : MonoBehaviour
     DoSongSegmentation(totalSamples, clipLength);
   }
 
-  public void AnalyzeSong()
-  {
-    AnalyzeSong(null);
-  }
-
   IEnumerator CreateSegmentPrefabs()
   {
     foreach (Transform t in segmentPrefabParent)
@@ -370,16 +369,31 @@ public class AudioAnalyzer : MonoBehaviour
   public void StartAnalyzingSong()
   {
     if (isRunningAnalysis) { Prompts.ShowQuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
-    StartCoroutine(AnalyzeSong(null));
+    StartCoroutine(AnalyzeFile(null));
   }
 
   public void StartAnalyzingSong(float[] totalSamples = null)
   {
     if (isRunningAnalysis) { Prompts.ShowQuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
-    StartCoroutine(AnalyzeSong(totalSamples));
+    StartCoroutine(AnalyzeFile(totalSamples));
+  }
+
+  void PushNewLine(ref string str, string line)
+  {
+    str += line + System.Environment.NewLine;
+  }
+  void PushNewLine(ref string str, params object[] lines)
+  {
+    foreach (var line in lines)
+    {
+      str += line;
+    }
+    str += System.Environment.NewLine;
   }
   bool isRunningAnalysis = false;
-  IEnumerator AnalyzeSong(float[] totalSamples = null)
+
+  // Анализ файла
+  IEnumerator AnalyzeFile(float[] totalSamples = null)
   {
     if (audSource.clip == null)
     {
@@ -387,6 +401,7 @@ public class AudioAnalyzer : MonoBehaviour
       yield break;
     }
     float clipLength = audSource.clip.length;
+    // 1. Получается массив семплов из файла через функцию GetTotalSaples
     totalSamples ??= GetTotalSamples();
 
     splitProgress = 0f;
@@ -395,41 +410,113 @@ public class AudioAnalyzer : MonoBehaviour
     int stored_sample_length = segmentsSampleLength;
 
     spectrogramTexture.rectTransform.sizeDelta = new UnityEngine.Vector2(spectogramDefaultWidth * spectrogramWidthMultiplier, spectogramDefaultHeight * spectrogramHeightMultiplier);
-    Debug.LogObjects((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height);
+    // Debug.LogObjects((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height);
     Texture2D specTex = new Texture2D((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
+    Texture2D spectrumTex = new Texture2D((int)spectrumTexture.rectTransform.rect.width, (int)spectrumTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
     Color32[] colorsArr = new Color32[0];
+    Color32[] colorsSpectrumArr = new Color32[0];
     int tex_width = specTex.width;
     int tex_heigth = specTex.height;
+    int specTex_width = spectrumTex.width;
+    int specText_height = spectrumTex.height;
+
+    string catched_error = "";
+    string result_path = Path.Combine(Application.persistentDataPath, "analysis_result.txt");
+
     Thread myThread = new Thread(() =>
     {
-      Debug.Log("splitting samples");
-      isRunningAnalysis = true;
-      float[] splitted_arr = AudioSplitter(totalSamples, stored_sample_length);
-      Debug.LogObjects("done splitting, result: ", splitted_arr.Length);
-      Debug.Log("generating spectrogram using FFT");
-      colorsArr = GenerateSpectrogram(tex_width, tex_heigth, totalSamples);
-      Debug.Log("done generating spectrogram using FFT");
-      Debug.Log("analyzing segments");
-      segments = SegmentsAnalyzer_splitted(splitted_arr, clipLength);
-      Debug.LogObjects("done analyzing, result: ", segments.Count);
-      isRunningAnalysis = false;
-      Debug.Log("finished");
+      string output = "";
+      try
+      {
+        PushNewLine(ref output, "started analysis");
+        Stopwatch totalTimer = new Stopwatch();
+        StartStopwatch_current(totalTimer);
+        PushNewLine(ref output, "splitting samples");
+        Stopwatch timer = new Stopwatch();
+        isRunningAnalysis = true;
+        // 2. Массив сэмплов разделяется на окна
+        StartStopwatch_current(timer);
+        float[] splitted_arr = AudioSplitter(totalSamples, stored_sample_length);
+        PushNewLine(ref output, "done splitting, result array size:", splitted_arr.Length, " | execution time:", StopStopwatch(timer));
+        PushNewLine(ref output, "generating spectrogram using FFT");
+        // 3. Строится спектрограмма и результат записывается в текстуру
+        StartStopwatch_current(timer);
+        colorsArr = GenerateSpectrogram(tex_width, tex_heigth, totalSamples);
+        PushNewLine(ref output, "done generating spectrogram using FFT | execution time:", StopStopwatch(timer));
+        // 4. Строится волновое представление сэмплов и результат записывается в текстуру
+        // StartStopwatch(timer);
+        // colorsSpectrumArr = DrawWave(specTex_width, specText_height, totalSamples);
+        // Debug.LogObjects("done drawing wave, execution time:", StopStopwatch(timer));
+        PushNewLine(ref output, "analyzing segments");
+        // 5. Производится анализ сегментов и результат записывается в массив
+        StartStopwatch_current(timer);
+        segments = SegmentsAnalyzer_splitted(splitted_arr, clipLength);
+        PushNewLine(ref output, "done analyzing segments, result array size:", segments.Count, " | execution time:", StopStopwatch(timer));
+        isRunningAnalysis = false;
+        PushNewLine(ref output, "finished | execution time:", StopStopwatch(totalTimer));
+      }
+      catch (Exception ex)
+      {
+        Debug.Log(ex);
+        catched_error = ex.Message;
+        PushNewLine(ref output, "Caught an error: ", catched_error);
+      }
+      File.WriteAllText(result_path, output);
     });
+
     myThread.IsBackground = true;
+    myThread.Name = "SONG_ANALYSIS";
     myThread.Start();
     while (myThread.IsAlive)
     {
       loadingImage.fillAmount = splitProgress / 2 + analysisProgress / 2;
       yield return null;
     }
+    foreach (var line in File.ReadAllLines(Path.Combine(Application.persistentDataPath, "analysis_result.txt")))
+    {
+      Debug.Log(line);
+    }
+    Debug.LogObjects("Log available at", Path.Combine(Application.persistentDataPath, "analysis_result.txt"));
+    if (catched_error != "")
+    {
+      Prompts.ShowQuickExitOnlyPrompt($"Произошла ошибка при попытке анализа файла, логи доступны в: {Path.Combine(Application.persistentDataPath, "analysis_result.txt")}");
+      isRunningAnalysis = false;
+      hideOnLoadingImage.enabled = true;
+      splitProgress = 0f;
+      analysisProgress = 0f;
+      loadingImage.fillAmount = 0;
+      yield break;
+    }
+    // 6. Применяются изменения
+
+    // spectrumTex.SetPixels32(colorsSpectrumArr);
+    // spectrumTex.Apply();
     specTex.SetPixels32(colorsArr);
     specTex.Apply();
     spectrogramTexture.texture = specTex;
+    // spectrumTexture.texture = spectrumTex;
     hideOnLoadingImage.enabled = true;
     splitProgress = 0f;
     analysisProgress = 0f;
     loadingImage.fillAmount = splitProgress / 2 + analysisProgress / 2;
     StartCoroutine(CreateSegmentPrefabs());
+  }
+
+  // Функция для отрисовки волнового представления аудиофайла
+  public Color32[] DrawWave(int textureWidth, int textureHeight, float[] samples)
+  {
+    Color32[] pixels = new Color32[textureWidth * textureHeight];
+    for (int x = 0; x < textureWidth; x++)
+    {
+      for (int y = 0; y < textureHeight; y++)
+      {
+        float intensity = samples[x];
+
+        pixels[x + y * textureWidth] = intensity > 0.5 ? Color.white : Color.clear;
+      }
+    }
+
+    return pixels;
   }
 
   public Texture2D GetSpectrumTexture(int width, int height, double[] spectrum_values)
@@ -468,7 +555,64 @@ public class AudioAnalyzer : MonoBehaviour
     finalSpectrum.Apply();
     return finalSpectrum;
   }
+  /// <summary>
+  /// Вычисление поворачивающего модуля e^(-i*2*PI*k/N)
+  /// </summary>
+  /// <param name="k"></param>
+  /// <param name="N"></param>
+  /// <returns></returns>
+  private static Complex w(int k, int N)
+  {
+    if (k % N == 0) return 1;
+    double arg = -2 * Math.PI * k / N;
+    return new Complex(Math.Cos(arg), Math.Sin(arg));
+  }
+  /// <summary>
+  /// Возвращает спектр сигнала
+  /// </summary>
+  /// <param name="x">Массив значений сигнала. Количество значений должно быть степенью 2</param>
+  /// <returns>Массив со значениями спектра сигнала</returns>
+  public static Complex[] FFT(Complex[] x)
+  {
+    Complex[] X;
+    int N = x.Length;
+    if (N == 2)
+    {
+      X = new Complex[2];
+      X[0] = x[0] + x[1];
+      X[1] = x[0] - x[1];
+    }
+    else
+    {
+      Complex[] x_even = new Complex[N / 2];
+      Complex[] x_odd = new Complex[N / 2];
+      for (int i = 0; i < N / 2; i++)
+      {
+        x_even[i] = x[2 * i];
+        x_odd[i] = x[2 * i + 1];
+      }
+      Complex[] X_even = FFT(x_even);
+      Complex[] X_odd = FFT(x_odd);
+      X = new Complex[N];
+      for (int i = 0; i < N / 2; i++)
+      {
+        X[i] = X_even[i] + w(i, N) * X_odd[i];
+        X[i + N / 2] = X_even[i] - w(i, N) * X_odd[i];
+      }
+    }
+    return X;
+  }
 
+  public Complex[] ConvertFloatToComplex(float[] floatArray)
+  {
+    Complex[] complexArray = new Complex[floatArray.Length];
+    for (int i = 0; i < floatArray.Length; i++)
+    {
+      complexArray[i] = new Complex(floatArray[i], 0);
+    }
+    return complexArray;
+  }
+  // Функция, отрисовывающая предварительный результат волнового представления аудиофайла для использования в виде слайдера
   public Texture2D CreateSongSpectrumTexture(int width, int height, AudioClip clip = null)
   {
     if (clip == null)

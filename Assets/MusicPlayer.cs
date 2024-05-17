@@ -41,7 +41,7 @@ public class MusicPlayer : MonoBehaviour
     {
         musicPath = Application.persistentDataPath + "/_music/";
         if (Directory.Exists(musicPath))
-            allMusic = Directory.GetFiles(musicPath, "*.mp3").OrderBy(a => rand.Next()).ToList();
+            allMusic = Directory.GetFiles(musicPath).OrderBy(a => rand.Next()).ToList();
         StartCoroutine(AnimateTitle());
         StartCoroutine(Delays.DelayAction(1f, () => { StartCoroutine(GetSong()); }));
     }
@@ -179,9 +179,9 @@ public class MusicPlayer : MonoBehaviour
         {
             Debug.Log("No more songs in list, regenerating...");
             musicIndex = 0;
-            allMusic = Directory.GetFiles(musicPath, "*.mp3").OrderBy(a => rand.Next()).ToList();
+            allMusic = Directory.GetFiles(musicPath).OrderBy(a => rand.Next()).ToList();
 
-            if (Directory.GetFiles(musicPath, "*.mp3").Length == 0)
+            if (Directory.GetFiles(musicPath).Length == 0)
             {
                 Debug.Log("No songs are available right now... Start downloading them by using editor!");
                 musicName.text = "Playing...nothing?..";
