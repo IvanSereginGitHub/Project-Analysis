@@ -30,6 +30,8 @@ public class AudioAnalyzer : MonoBehaviour
   GameObject segmentPrefab;
   [SerializeField]
   Image loadingImage, hideOnLoadingImage;
+  [SerializeField]
+  SelectFiles selectFiles;
 
 
   [Header("SEGMENTER SETTINGS")]
@@ -44,7 +46,7 @@ public class AudioAnalyzer : MonoBehaviour
   float splitProgress = 0f, analysisProgress = 0f;
   [SerializeField]
   List<GameObject> analysisSettings = new List<GameObject>();
-  Prompt analysisOptionsPrompt, spectrogramOptionsPrompt, spectrumOptionsPrompt;
+  Prompt analysisOptionsPrompt, spectrogramOptionsPrompt, spectrumOptionsPrompt, waveformOptionsPrompt;
   [Header("SPECTROGRAM SETTINGS")]
   public RawImage spectrogramTexture;
   [SerializeField]
@@ -53,7 +55,7 @@ public class AudioAnalyzer : MonoBehaviour
   float spectrogramMultiply, spectrogramDBOffset; // Коэффициенты, влияющие на яркость графика
   [SerializeField]
   float spectogramDefaultWidth = 1024, spectogramDefaultHeight = 1024; // Стандартные размеры текстуры спектрограммы
-  [Range(1, 8)]
+  [Range(1, 4)]
   public int spectrogramWidthMultiplier, spectrogramHeightMultiplier; // Множители, увеличивающие размер спектрограммы.
   [Range(1, 10)]
   public int subThreadsAmount = 5; // Количество потоков, способное заниматься вычислением спектрограммы
@@ -62,6 +64,12 @@ public class AudioAnalyzer : MonoBehaviour
   [Header("SPECTRUM SETTINGS")]
   public List<GameObject> spectrumSettings = new List<GameObject>();
   public RawImage spectrumTexture;
+  [Header("WAVEFORM SETTINGS")]
+  public List<GameObject> waveformSettings = new List<GameObject>();
+  [SerializeField]
+  float waveformDefaultWidth = 1024, waveformDefaultHeight = 1024; // Стандартные размеры текстуры звуковой волны
+  [Range(1, 8)]
+  public int waveformWidthMultiplier, waveformHeightMultiplier; // Множители, увеличивающие размер звуковой волны
   public void Start()
   {
     analysisOptionsPrompt = new Prompt(PromptType.ExitOnly)
@@ -83,6 +91,17 @@ public class AudioAnalyzer : MonoBehaviour
     {
       spectrogramOptionsPrompt.PlaceGameobjectInside(obj);
     }
+
+    waveformOptionsPrompt = new Prompt(PromptType.ExitOnly)
+    {
+      promptText = "Настройки звуковой волны:"
+    };
+    Prompts.PreparePrompt(waveformOptionsPrompt, true);
+    foreach (var obj in waveformSettings)
+    {
+      waveformOptionsPrompt.PlaceGameobjectInside(obj);
+    }
+
 
     spectrumOptionsPrompt = new Prompt(PromptType.ExitOnly)
     {
@@ -122,7 +141,7 @@ public class AudioAnalyzer : MonoBehaviour
   {
     spectrumOptionsPrompt.Show();
   }
-  public SelectFiles selectFiles;
+
   public void ExportTextureToFile(RawImage tex)
   {
     selectFiles.SaveFile((tex.texture as Texture2D).EncodeToPNG(), $"{audSource.clip.name}_spectrogram.png");
@@ -220,7 +239,7 @@ public class AudioAnalyzer : MonoBehaviour
         int ind = Math.Min(offset + j, samples.Length - 1);
         frame[j] = samples[ind];
       }
-      Complex[] complexes = FFT(ConvertFloatToComplex(frame));
+      Complex[] complexes = FastFourierTransform.FFT(FastFourierTransform.ConvertFloatToComplex(frame));
 
       for (int l = 0; l < magnitudes.Length; l++)
       {
@@ -234,9 +253,11 @@ public class AudioAnalyzer : MonoBehaviour
     }
     return pixels;
   }
+
   // Анализ сэмплов без предварительной обработки, гораздо медленнее
   public List<float> SegmenterAnalyzer(float[] totalSamples, float clipLength)
   {
+
     Debug.LogObjects("info:", segmentsSampleLength, segmenterDifferenceThreshold, segmenterSmoothingWindowSize);
     List<float> min_times = new List<float>();
     float previousAverage = 0f;
@@ -368,13 +389,13 @@ public class AudioAnalyzer : MonoBehaviour
 
   public void StartAnalyzingSong()
   {
-    if (isRunningAnalysis) { Prompts.ShowQuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
+    if (isRunningAnalysis) { return; }
     StartCoroutine(AnalyzeFile(null));
   }
 
   public void StartAnalyzingSong(float[] totalSamples = null)
   {
-    if (isRunningAnalysis) { Prompts.ShowQuickStrictPrompt("Analyzing is still in progress, please wait..."); return; }
+    if (isRunningAnalysis) { return; }
     StartCoroutine(AnalyzeFile(totalSamples));
   }
 
@@ -392,6 +413,7 @@ public class AudioAnalyzer : MonoBehaviour
   }
   bool isRunningAnalysis = false;
 
+  Thread stoppableThread;
   // Анализ файла
   IEnumerator AnalyzeFile(float[] totalSamples = null)
   {
@@ -423,7 +445,7 @@ public class AudioAnalyzer : MonoBehaviour
     string catched_error = "";
     string result_path = Path.Combine(Application.persistentDataPath, "analysis_result.txt");
 
-    Thread myThread = new Thread(() =>
+    stoppableThread = new Thread(() =>
     {
       string output = "";
       try
@@ -457,17 +479,17 @@ public class AudioAnalyzer : MonoBehaviour
       }
       catch (Exception ex)
       {
-        Debug.Log(ex);
+        Debug.LogObjects(ex);
         catched_error = ex.Message;
         PushNewLine(ref output, "Caught an error: ", catched_error);
       }
       File.WriteAllText(result_path, output);
     });
 
-    myThread.IsBackground = true;
-    myThread.Name = "SONG_ANALYSIS";
-    myThread.Start();
-    while (myThread.IsAlive)
+    stoppableThread.IsBackground = true;
+    stoppableThread.Name = "SONG_ANALYSIS";
+    stoppableThread.Start();
+    while (stoppableThread.IsAlive)
     {
       loadingImage.fillAmount = splitProgress / 2 + analysisProgress / 2;
       yield return null;
@@ -555,63 +577,7 @@ public class AudioAnalyzer : MonoBehaviour
     finalSpectrum.Apply();
     return finalSpectrum;
   }
-  /// <summary>
-  /// Вычисление поворачивающего модуля e^(-i*2*PI*k/N)
-  /// </summary>
-  /// <param name="k"></param>
-  /// <param name="N"></param>
-  /// <returns></returns>
-  private static Complex w(int k, int N)
-  {
-    if (k % N == 0) return 1;
-    double arg = -2 * Math.PI * k / N;
-    return new Complex(Math.Cos(arg), Math.Sin(arg));
-  }
-  /// <summary>
-  /// Возвращает спектр сигнала
-  /// </summary>
-  /// <param name="x">Массив значений сигнала. Количество значений должно быть степенью 2</param>
-  /// <returns>Массив со значениями спектра сигнала</returns>
-  public static Complex[] FFT(Complex[] x)
-  {
-    Complex[] X;
-    int N = x.Length;
-    if (N == 2)
-    {
-      X = new Complex[2];
-      X[0] = x[0] + x[1];
-      X[1] = x[0] - x[1];
-    }
-    else
-    {
-      Complex[] x_even = new Complex[N / 2];
-      Complex[] x_odd = new Complex[N / 2];
-      for (int i = 0; i < N / 2; i++)
-      {
-        x_even[i] = x[2 * i];
-        x_odd[i] = x[2 * i + 1];
-      }
-      Complex[] X_even = FFT(x_even);
-      Complex[] X_odd = FFT(x_odd);
-      X = new Complex[N];
-      for (int i = 0; i < N / 2; i++)
-      {
-        X[i] = X_even[i] + w(i, N) * X_odd[i];
-        X[i + N / 2] = X_even[i] - w(i, N) * X_odd[i];
-      }
-    }
-    return X;
-  }
 
-  public Complex[] ConvertFloatToComplex(float[] floatArray)
-  {
-    Complex[] complexArray = new Complex[floatArray.Length];
-    for (int i = 0; i < floatArray.Length; i++)
-    {
-      complexArray[i] = new Complex(floatArray[i], 0);
-    }
-    return complexArray;
-  }
   // Функция, отрисовывающая предварительный результат волнового представления аудиофайла для использования в виде слайдера
   public Texture2D CreateSongSpectrumTexture(int width, int height, AudioClip clip = null)
   {

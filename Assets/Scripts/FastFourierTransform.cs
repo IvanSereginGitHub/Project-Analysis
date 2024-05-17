@@ -4,59 +4,91 @@ using System.Numerics;
 
 public class FastFourierTransform : MonoBehaviour
 {
-    /* Performs a Bit Reversal Algorithm on a postive integer 
-     * for given number of bits
-     * e.g. 011 with 3 bits is reversed to 110 */
-    public static int BitReverse(int n, int bits)
+    /// <summary>
+    /// Вычисление поворачивающего модуля e^(-i*2*PI*k/N)
+    /// </summary>
+    /// <param name="k"></param>
+    /// <param name="N"></param>
+    /// <returns></returns>
+    public static Complex w(int k, int N)
     {
-        int reversedN = n;
-        int count = bits - 1;
-
-        n >>= 1;
-        while (n > 0)
-        {
-            reversedN = (reversedN << 1) | (n & 1);
-            count--;
-            n >>= 1;
-        }
-
-        return (reversedN << count) & ((1 << bits) - 1);
+        if (k % N == 0) return 1;
+        double arg = -2 * Math.PI * k / N;
+        return new Complex(Math.Cos(arg), Math.Sin(arg));
     }
-
-    /* Uses Cooley-Tukey iterative in-place algorithm with radix-2 DIT case
-     * assumes no of points provided are a power of 2 */
-    public static void FFT(Complex[] buffer)
+    public static Complex iw(int k, int N)
     {
-
-        int bits = (int)Math.Log(buffer.Length, 2);
-        for (int j = 1; j < buffer.Length / 2; j++)
+        if (k % N == 0) return 1;
+        double arg = 2 * Math.PI * k / N;
+        return new Complex(Math.Cos(arg), Math.Sin(arg));
+    }
+    /// <summary>
+    /// Возвращает спектр сигнала
+    /// </summary>
+    /// <param name="x">Массив значений сигнала. Количество значений должно быть степенью 2</param>
+    /// <returns>Массив со значениями спектра сигнала</returns>
+    public static Complex[] FFT(Complex[] x)
+    {
+        Complex[] X;
+        int N = x.Length;
+        if (N == 2)
         {
-
-            int swapPos = BitReverse(j, bits);
-            (buffer[swapPos], buffer[j]) = (buffer[j], buffer[swapPos]);
+            X = new Complex[2];
+            X[0] = x[0] + x[1];
+            X[1] = x[0] - x[1];
         }
-
-        for (int N = 2; N <= buffer.Length; N <<= 1)
+        else
         {
-            for (int i = 0; i < buffer.Length; i += N)
+            Complex[] x_even = new Complex[N / 2];
+            Complex[] x_odd = new Complex[N / 2];
+            for (int i = 0; i < N / 2; i++)
             {
-                for (int k = 0; k < N / 2; k++)
-                {
-
-                    int evenIndex = i + k;
-                    int oddIndex = i + k + (N / 2);
-                    var even = buffer[evenIndex];
-                    var odd = buffer[oddIndex];
-
-                    double term = -2 * Math.PI * k / N;
-                    Complex exp = new Complex(Math.Cos(term), Math.Sin(term)) * odd;
-
-                    buffer[evenIndex] = even + exp;
-                    buffer[oddIndex] = even - exp;
-                }
+                x_even[i] = x[2 * i];
+                x_odd[i] = x[2 * i + 1];
+            }
+            Complex[] X_even = FFT(x_even);
+            Complex[] X_odd = FFT(x_odd);
+            X = new Complex[N];
+            for (int i = 0; i < N / 2; i++)
+            {
+                X[i] = X_even[i] + w(i, N) * X_odd[i];
+                X[i + N / 2] = X_even[i] - w(i, N) * X_odd[i];
             }
         }
+        return X;
     }
+
+    public static Complex[] iFFT(Complex[] x)
+    {
+        Complex[] X;
+        int N = x.Length;
+        if (N == 2)
+        {
+            X = new Complex[2];
+            X[0] = x[0] + x[1];
+            X[1] = x[0] - x[1];
+        }
+        else
+        {
+            Complex[] x_even = new Complex[N / 2];
+            Complex[] x_odd = new Complex[N / 2];
+            for (int i = 0; i < N / 2; i++)
+            {
+                x_even[i] = x[2 * i];
+                x_odd[i] = x[2 * i + 1];
+            }
+            Complex[] X_even = iFFT(x_even);
+            Complex[] X_odd = iFFT(x_odd);
+            X = new Complex[N];
+            for (int i = 0; i < N / 2; i++)
+            {
+                X[i] = X_even[i] + iw(i, N) * X_odd[i];
+                X[i + N / 2] = X_even[i] - iw(i, N) * X_odd[i];
+            }
+        }
+        return X;
+    }
+
 
     public static Complex[] ConvertFloatToComplex(float[] floatArray)
     {
@@ -66,5 +98,25 @@ public class FastFourierTransform : MonoBehaviour
             complexArray[i] = new Complex(floatArray[i], 0);
         }
         return complexArray;
+    }
+
+
+    public static float[] ConvertComplexToFloat(Complex[] complex)
+    {
+        float[] floatArray = new float[complex.Length];
+        for (int i = 0; i < complex.Length; i++)
+        {
+            floatArray[i] = (float)complex[i].Magnitude;
+        }
+        return floatArray;
+    }
+    public static float[] ConvertComplexToFloat_Real(Complex[] complex)
+    {
+        float[] floatArray = new float[complex.Length];
+        for (int i = 0; i < complex.Length; i++)
+        {
+            floatArray[i] = (float)complex[i].Real;
+        }
+        return floatArray;
     }
 }

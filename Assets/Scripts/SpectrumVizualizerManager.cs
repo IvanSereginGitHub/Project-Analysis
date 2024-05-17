@@ -19,8 +19,9 @@ public class SpectrumVizualizerManager : MonoBehaviour
     Transform[] objects = new Transform[0];
 
     public bool useInverseSamples = false;
+    public bool alwaysUpdate = false;
 
-
+    [ContextMenu("Regenerate")]
     public void Regenerate()
     {
         if (countMultiplier == 0)
@@ -44,7 +45,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
     {
         for (int i = 0; i < objects.Length; i++)
         {
-            Destroy(objects[i]);
+            Destroy(objects[i].gameObject);
         }
         objects = new Transform[0];
     }
@@ -59,10 +60,14 @@ public class SpectrumVizualizerManager : MonoBehaviour
             objects[i].localScale = new Vector2(5, 5);
         }
     }
-    double[] reversedSamples;
+    float[] reversedSamples = new float[1024];
     private void Update()
     {
         audSource.GetSpectrumData(samples, 0, FFTWindow.Blackman);
+        if (!audSource.isPlaying && !alwaysUpdate)
+        {
+            return;
+        }
         if (!useInverseSamples)
             VizualizeSpectrum();
         else
@@ -87,10 +92,11 @@ public class SpectrumVizualizerManager : MonoBehaviour
 
     void VizualizeSamples()
     {
-        reversedSamples = AnalysisFunctions.PerformInverseFFT(FastFourierTransform.ConvertFloatToComplex(samples));
+        //reversedSamples = FastFourierTransform.ConvertComplexToFloat_Real(FastFourierTransform.iFFT(FastFourierTransform.ConvertFloatToComplex(samples)));
+        audSource.GetOutputData(reversedSamples, 0);
         for (int i = 0; i < objects.Length; i++)
         {
-            objects[i].localPosition = new Vector2(objects[i].localPosition.x, Convert.ToSingle(reversedSamples[i] * sizeMultiplier));
+            objects[i].localPosition = new Vector2(objects[i].localPosition.x, reversedSamples[i] * sizeMultiplier);
             //objects[i].localScale = new Vector3(defaultWidthMultiplier, sizeMultiplier * AverageFromSamplesRange(countMultiplier * i, countMultiplier), 0);
         }
     }
