@@ -11,6 +11,31 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+[System.AttributeUsage(System.AttributeTargets.Class |
+                       System.AttributeTargets.Struct | System.AttributeTargets.Field)
+]
+public class FieldInformationAttribute : System.Attribute
+{
+  public string Name;
+  public string Description;
+  public float CustomWidth = 0;
+  public float CustomHeight = 0;
+
+  public FieldInformationAttribute(string name, string description)
+  {
+    Name = name;
+    Description = description;
+  }
+  public FieldInformationAttribute(string name, string description, float customWidth, float customHeight)
+  {
+    Name = name;
+    Description = description;
+    CustomWidth = customWidth;
+    CustomHeight = customHeight;
+  }
+}
+
+
 public class AudioAnalyzer : MonoBehaviour
 {
   [SerializeField]
@@ -35,13 +60,17 @@ public class AudioAnalyzer : MonoBehaviour
 
 
   [Header("SEGMENTER SETTINGS")]
-  public int segmentsSampleLength = 1024; // Количество семплов, считающееся за один блок при анализе
-  public float segmenterDifferenceThreshold = 0.15f; // Значение разницы в звуке, которая обозначает появление нового сегмента
-  public int segmenterSmoothingWindowSize = 60; // Количество блоков, которые помогают усреднить и вычислить громкость следующего блока
+  [FieldInformation("Размерность блоков", "Количество семплов, определяющих размер одного блок при анализе")]
+  public int segmenter_segmentsSampleLength = 1024; // Количество семплов, считающееся за один блок при анализе
+  [FieldInformation("Абсолютное значение разницы сегментов", "Значение разницы в громкости звука, которое обозначает появление нового сегмента")]
+  public float segmenter_DifferenceThreshold = 0.15f; // Значение разницы в звуке, которая обозначает появление нового сегмента
+  [FieldInformation("Количество окон для вычислений", "Количество блоков размерностью в <color=yellow>'Размерность блоков'</color>, которые усредняют и вычисляют громкость следующего блока")]
+  public int segmenter_SmoothingWindowSize = 60; // Количество блоков, которые помогают усреднить и вычислить громкость следующего блока
   /// <summary>
   /// Прогрессивное сканирование за счёт сохранения предыдущего значения сегмента и сравнения его с текущим
   /// </summary>
-  public bool progressiveSegmentsFinding = false;
+  [FieldInformation("Прогрессивное сканирование", "Прогрессивное сканирование за счёт сохранения предыдущего значения сегмента и сравнения его с текущим.\n\nСледует логике формирования сегментов во многих жанрах музыки, но может выдавать разные значения при небольших отклонениях в настройках.", 250, 30)]
+  public bool segmenter_progressiveSegmentsFinding = false;
 
   float splitProgress = 0f, analysisProgress = 0f;
   [SerializeField]
@@ -52,13 +81,23 @@ public class AudioAnalyzer : MonoBehaviour
   [SerializeField]
   Gradient spectrogramGradient;
   [SerializeField]
-  float spectrogramMultiply, spectrogramDBOffset; // Коэффициенты, влияющие на яркость графика
+  [Range(0.01f, 0.5f)]
+  [FieldInformation("Множитель значений спектрограммы", "Множитель, увеличивающий значение полученных результатов из преобразования Фурье.")]
+  float spectrogram_Multiply;
+  float spectrogramDBOffset; // Коэффициенты, влияющие на яркость графика
   [SerializeField]
-  float spectogramDefaultWidth = 1024, spectogramDefaultHeight = 1024; // Стандартные размеры текстуры спектрограммы
+  float spectogramDefaultWidth = 1024;
+  float spectogramDefaultHeight = 1024; // Стандартные размеры текстуры спектрограммы
   [Range(1, 4)]
-  public int spectrogramWidthMultiplier, spectrogramHeightMultiplier; // Множители, увеличивающие размер спектрограммы.
-  public bool fixDualChannel = true; // Исправление изображения спектрограммы для некоторых двухканальных аудиофайлов
-  public bool stretchTexture = true; // Применить растягивание результатов на всю ширину текстуры? (в состоянии false занимает только половину текстуры/четверь текстуры с включенной настройкой fixDualChannel)  
+  [FieldInformation("Множитель длины спектрограммы", "Множитель, увеличивающий длину полученной спектрограммы. Улучшает качество финального изображения.")]
+  public int spectrogram_WidthMultiplier;
+  [Range(1, 4)]
+  [FieldInformation("Множитель ширины спектрограммы", "Множитель, увеличивающий ширину полученной спектрограммы. Улучшает качество финального изображения.")]
+  public int spectrogram_HeightMultiplier; // Множители, увеличивающие размер спектрограммы.
+  [FieldInformation("Исправление стерео", "Исправление изображения спектрограммы для некоторых двухканальных аудиофайлов.\nПри отключении этой настройки изображение спектрограммы может быть отзеркалено.")]
+  public bool spectrogram_fixDualChannel = true; // Исправление изображения спектрограммы для некоторых двухканальных аудиофайлов
+  [FieldInformation("Растянуть спектрограмму", "Применить растягивание результатов на всю ширину текстуры (в состоянии false занимает только половину текстуры/четверь текстуры с включенной настройкой fixDualChannel).")]
+  public bool spectrogram_stretchTexture = true; // Применить растягивание результатов на всю ширину текстуры? (в состоянии false занимает только половину текстуры/четверь текстуры с включенной настройкой fixDualChannel)  
   [SerializeField]
   List<GameObject> spectogramSettings = new List<GameObject>();
   [Header("SPECTRUM SETTINGS")]
@@ -67,9 +106,15 @@ public class AudioAnalyzer : MonoBehaviour
   [Header("WAVEFORM SETTINGS")]
   public List<GameObject> waveformSettings = new List<GameObject>();
   [SerializeField]
-  float waveformDefaultWidth = 1024, waveformDefaultHeight = 1024; // Стандартные размеры текстуры звуковой волны
+
+  float waveformDefaultWidth = 1024;
+
+  float waveformDefaultHeight = 1024; // Стандартные размеры текстуры звуковой волны
   [Range(1, 8)]
-  public int waveformWidthMultiplier, waveformHeightMultiplier; // Множители, увеличивающие размер звуковой волны
+
+  public int waveformWidthMultiplier;
+
+  public int waveformHeightMultiplier; // Множители, увеличивающие размер звуковой волны
   public void Start()
   {
     analysisOptionsPrompt = new Prompt(PromptType.ExitOnly)
@@ -116,23 +161,23 @@ public class AudioAnalyzer : MonoBehaviour
 
   public void ChangeSpectrogramWidth(float val)
   {
-    spectrogramWidthMultiplier = (int)val;
+    spectrogram_WidthMultiplier = (int)val;
   }
   public void ChangeSpectrogramHeight(float val)
   {
-    spectrogramHeightMultiplier = (int)val;
+    spectrogram_HeightMultiplier = (int)val;
   }
   public void ChangeSpectrogramFixDualChannels(bool toggle)
   {
-    fixDualChannel = toggle;
+    spectrogram_fixDualChannel = toggle;
   }
   public void ChangeSpectrogramStretchTexture(bool toggle)
   {
-    stretchTexture = toggle;
+    spectrogram_stretchTexture = toggle;
   }
   public void ChangeSpectrogramMultiply(float val)
   {
-    spectrogramMultiply = val;
+    spectrogram_Multiply = val;
   }
   public void OpenAnalysisSettings()
   {
@@ -193,17 +238,17 @@ public class AudioAnalyzer : MonoBehaviour
 
       // Add selected count of windows
 
-      int min_value = Math.Min(splittedSamples.Length, i + segmenterSmoothingWindowSize);
+      int min_value = Math.Min(splittedSamples.Length, i + segmenter_SmoothingWindowSize);
       for (int j = i + 1; j < min_value; j++)
       {
         average += splittedSamples[j];
       }
 
-      average /= segmenterSmoothingWindowSize;
+      average /= segmenter_SmoothingWindowSize;
 
-      if (Math.Abs(previousAverage - average) > segmenterDifferenceThreshold)
+      if (Math.Abs(previousAverage - average) > segmenter_DifferenceThreshold)
       {
-        if (progressiveSegmentsFinding)
+        if (segmenter_progressiveSegmentsFinding)
         {
           previousAverage = average;
         }
@@ -211,7 +256,7 @@ public class AudioAnalyzer : MonoBehaviour
         min_times.Add(approx_time.Round(1));
       }
 
-      if (!progressiveSegmentsFinding)
+      if (!segmenter_progressiveSegmentsFinding)
         previousAverage = splittedSamples[i];
       analysisProgress = (float)i / splittedSamples.Length;
     }
@@ -270,7 +315,7 @@ public class AudioAnalyzer : MonoBehaviour
         magnitudes[l] = complexes[l].Magnitude;
         if (convertToDb)
           magnitudes[l] = 20 * Math.Log10(magnitudes[l]) + spectrogramDBOffset; // convert to db incase needed
-        float intensity = (float)magnitudes[l] * spectrogramMultiply;
+        float intensity = (float)magnitudes[l] * spectrogram_Multiply;
         for (int m = 1; m <= sizeMultiplier; m++)
         {
           //Debug.LogObjects("size", l, "max_size", magnitudes.Length, "width", x, "height", count * width, "index", x + count * width, "max_size", pixels.Length);
@@ -289,28 +334,28 @@ public class AudioAnalyzer : MonoBehaviour
   public List<float> SegmenterAnalyzer(float[] totalSamples, float clipLength)
   {
 
-    Debug.LogObjects("info:", segmentsSampleLength, segmenterDifferenceThreshold, segmenterSmoothingWindowSize);
+    Debug.LogObjects("info:", segmenter_segmentsSampleLength, segmenter_DifferenceThreshold, segmenter_SmoothingWindowSize);
     List<float> min_times = new List<float>();
     float previousAverage = 0f;
-    for (int i = 0; i < totalSamples.Length; i += segmentsSampleLength)
+    for (int i = 0; i < totalSamples.Length; i += segmenter_segmentsSampleLength)
     {
-      IEnumerable<float> arr = totalSamples.Skip(i).Take(segmentsSampleLength * (segmenterSmoothingWindowSize + 1));
+      IEnumerable<float> arr = totalSamples.Skip(i).Take(segmenter_segmentsSampleLength * (segmenter_SmoothingWindowSize + 1));
 
-      float average = arr.Take(segmentsSampleLength * segmenterSmoothingWindowSize).Select(x => Math.Abs(x)).Average();
+      float average = arr.Take(segmenter_segmentsSampleLength * segmenter_SmoothingWindowSize).Select(x => Math.Abs(x)).Average();
 
       float approx_time = ConvertSampleIndexToTime(i, totalSamples.Length, clipLength);
 
-      if (Math.Abs(previousAverage - average) > segmenterDifferenceThreshold)
+      if (Math.Abs(previousAverage - average) > segmenter_DifferenceThreshold)
       {
-        if (progressiveSegmentsFinding)
+        if (segmenter_progressiveSegmentsFinding)
         {
           previousAverage = average;
         }
         min_times.Add(approx_time);
       }
 
-      if (!progressiveSegmentsFinding)
-        previousAverage = arr.Take(segmentsSampleLength).Select(x => Math.Abs(x)).Average();
+      if (!segmenter_progressiveSegmentsFinding)
+        previousAverage = arr.Take(segmenter_segmentsSampleLength).Select(x => Math.Abs(x)).Average();
       analysisProgress = (float)i / totalSamples.Length;
     }
     return min_times;
@@ -377,25 +422,25 @@ public class AudioAnalyzer : MonoBehaviour
   }
   public void ChangeSegmenterSampleCount(string val)
   {
-    segmentsSampleLength = Convert.ToInt32(val);
+    segmenter_segmentsSampleLength = Convert.ToInt32(val);
   }
   public void ChangePreserveLastDiffValueAsCompare(bool val)
   {
-    progressiveSegmentsFinding = val;
+    segmenter_progressiveSegmentsFinding = val;
   }
   public void ChangeSegmenterDiffValue(string val)
   {
-    segmenterDifferenceThreshold = Convert.ToSingle(val);
+    segmenter_DifferenceThreshold = Convert.ToSingle(val);
   }
 
   public void ChangeSegmenterWindowSize(string val)
   {
-    segmenterSmoothingWindowSize = Convert.ToInt32(val);
+    segmenter_SmoothingWindowSize = Convert.ToInt32(val);
   }
 
   public void ChangeSegmenterSampleSize(string val)
   {
-    segmentsSampleLength = Convert.ToInt32(val);
+    segmenter_segmentsSampleLength = Convert.ToInt32(val);
   }
   public void AnalyzeSongSegmentsPos(float[] totalSamples, float clipLength)
   {
@@ -460,9 +505,9 @@ public class AudioAnalyzer : MonoBehaviour
     splitProgress = 0f;
     analysisProgress = 0f;
     hideOnLoadingImage.enabled = false;
-    int stored_sample_length = segmentsSampleLength;
+    int stored_sample_length = segmenter_segmentsSampleLength;
 
-    spectrogramTexture.rectTransform.sizeDelta = new UnityEngine.Vector2(spectogramDefaultWidth * spectrogramWidthMultiplier, spectogramDefaultHeight * spectrogramHeightMultiplier);
+    spectrogramTexture.rectTransform.sizeDelta = new UnityEngine.Vector2(spectogramDefaultWidth * spectrogram_WidthMultiplier, spectogramDefaultHeight * spectrogram_HeightMultiplier);
     // Debug.LogObjects((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height);
     Texture2D specTex = new Texture2D((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
     Texture2D spectrumTex = new Texture2D((int)spectrumTexture.rectTransform.rect.width, (int)spectrumTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
@@ -494,7 +539,7 @@ public class AudioAnalyzer : MonoBehaviour
         PushNewLine(ref output, "generating spectrogram using FFT");
         // 3. Строится спектрограмма и результат записывается в текстуру
         StartStopwatch_current(timer);
-        colorsArr = GenerateSpectrogram(tex_width, tex_heigth, totalSamples, true, false, fixDualChannel, stretchTexture);
+        colorsArr = GenerateSpectrogram(tex_width, tex_heigth, totalSamples, true, false, spectrogram_fixDualChannel, spectrogram_stretchTexture);
         PushNewLine(ref output, "done generating spectrogram using FFT | execution time:", StopStopwatch(timer));
         // 4. Строится волновое представление сэмплов и результат записывается в текстуру
         // StartStopwatch(timer);

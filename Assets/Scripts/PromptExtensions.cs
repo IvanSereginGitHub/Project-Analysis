@@ -19,6 +19,14 @@ public static class PromptExtensions
   {
     prompt.openingTime = time;
   }
+
+  public static void PlaceGameobjectsInside(this Prompt prompt, List<GameObject> objects, bool addIgnoreLayout = true, Vector2? ignoreLayoutCustomSize = null)
+  {
+    foreach (var item in objects)
+    {
+      prompt.PlaceGameobjectInside(item, addIgnoreLayout, ignoreLayoutCustomSize);
+    }
+  }
   public static void PlaceGameobjectInside(this Prompt prompt, GameObject obj, bool addIgnoreLayout = true, Vector2? ignoreLayoutCustomSize = null)
   {
     obj.transform.SetParent(prompt.promptPanel.textBehaviour.transform);

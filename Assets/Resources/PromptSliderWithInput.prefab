@@ -559,7 +559,7 @@ MonoBehaviour:
   loadStoredValue: 
   valFormat: 
   textObjInput: '{value}'
-  textInput: '{value}%'
+  textInput: '{value}'
   currentValAsDefault: 0
   executeOnAwake: 0
 --- !u!1001 &8079852192390538818

@@ -9,26 +9,30 @@ public class SpectrumVizualizerManager : MonoBehaviour
     public GameObject prefab;
     public Transform prefParent;
     public AudioSource audSource;
-    public int beatCount = 64;
+    [FieldInformation("Количество сэмплов", "Изменение количества сэмплов для графика по-умолчанию. Чем меньше значение - тем крупнее элементы графика.")]
+    public int spectrum_beatCount = 64;
     public int changeIndexBy = 0;
     public float changeIndexTime = 0;
-    public float sizeMultiplier = 1, defaultWidthMultiplier = 1, endPosition, startPosition;
+    [FieldInformation("Множитель размера", "Изменение множителя чувствительности значений для графика.")]
+    public float spectrum_sizeMultiplier = 1;
+    public float defaultWidthMultiplier = 1, endPosition, startPosition;
     public int countMultiplier = 0;
     float distance;
     float[] samples = new float[1024];
     Transform[] objects = new Transform[0];
 
     public bool useInverseSamples = false;
-    public bool alwaysUpdate = false;
+    [FieldInformation("Постоянно обновлять", "Переключение обновления графика. Если опция включена - при остановке музыки график будет сбрасываться до стандартных значений.")]
+    public bool spectrum_alwaysUpdate = false;
 
     [ContextMenu("Regenerate")]
     public void Regenerate()
     {
         if (countMultiplier == 0)
         {
-            countMultiplier = 1024 / beatCount;
+            countMultiplier = 1024 / spectrum_beatCount;
         }
-        distance = Math.Abs(startPosition - endPosition) / beatCount;
+        distance = Math.Abs(startPosition - endPosition) / spectrum_beatCount;
         ClearArray();
         FillArray();
         if (!useInverseSamples)
@@ -52,7 +56,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
 
     void FillArray()
     {
-        objects = new Transform[beatCount];
+        objects = new Transform[spectrum_beatCount];
         for (int i = 0; i < objects.Length; i++)
         {
             objects[i] = Instantiate(prefab, prefParent).transform;
@@ -64,7 +68,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
     private void Update()
     {
         audSource.GetSpectrumData(samples, 0, FFTWindow.Blackman);
-        if (!audSource.isPlaying && !alwaysUpdate)
+        if (!audSource.isPlaying && !spectrum_alwaysUpdate)
         {
             return;
         }
@@ -86,7 +90,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
     {
         for (int i = 0; i < objects.Length; i++)
         {
-            objects[i].localScale = new Vector3(defaultWidthMultiplier, sizeMultiplier * AverageFromSamplesRange(countMultiplier * i, countMultiplier), 0);
+            objects[i].localScale = new Vector3(defaultWidthMultiplier, spectrum_sizeMultiplier * AverageFromSamplesRange(countMultiplier * i, countMultiplier), 0);
         }
     }
 
@@ -96,7 +100,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
         audSource.GetOutputData(reversedSamples, 0);
         for (int i = 0; i < objects.Length; i++)
         {
-            objects[i].localPosition = new Vector2(objects[i].localPosition.x, reversedSamples[i] * sizeMultiplier);
+            objects[i].localPosition = new Vector2(objects[i].localPosition.x, reversedSamples[i] * spectrum_sizeMultiplier);
             //objects[i].localScale = new Vector3(defaultWidthMultiplier, sizeMultiplier * AverageFromSamplesRange(countMultiplier * i, countMultiplier), 0);
         }
     }
