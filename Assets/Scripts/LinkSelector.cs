@@ -9,6 +9,7 @@ using System;
 
 public class LinkSelector : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerUpHandler
 {
+  public bool fixLayoutAnchorsBug;
   private TextMeshProUGUI m_TextMeshPro;
   private Canvas m_Canvas;
   private Camera m_Camera;
@@ -16,6 +17,8 @@ public class LinkSelector : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
   public Color selectColor = Color.yellow;
   public bool addUnderscoreToLinks, autogenerateLinkEventsForWeblinks;
   public List<EventMethodsClass> linkEvents;
+
+  string originalText;
   // Flags
   private bool isHoveringObject;
 
@@ -23,7 +26,7 @@ public class LinkSelector : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 
   int cachedLinkIndex = -1;
 
-  void Start()
+  public void RefreshInfo()
   {
     m_TextMeshPro = gameObject.GetComponent<TextMeshProUGUI>();
     m_Canvas = gameObject.GetComponentInParent<Canvas>();
@@ -32,10 +35,13 @@ public class LinkSelector : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     if (m_Canvas.renderMode == RenderMode.ScreenSpaceOverlay)
       m_Camera = null;
     else
-      m_Camera = m_Canvas.worldCamera;
-
-
-
+    {
+      if (m_Canvas.worldCamera != null)
+        m_Camera = m_Canvas.worldCamera;
+      else
+        m_Camera = Camera.main;
+    }
+    originalText = m_TextMeshPro.text;
     if (autogenerateLinkEventsForWeblinks)
     {
       int url_count = Regex.Matches(m_TextMeshPro.text, @"((http:\/\/)|(https:\/\/)|(www.))(.*)( |)", RegexOptions.Multiline).Count;
@@ -65,20 +71,20 @@ public class LinkSelector : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     }
   }
 
-
   void OnEnable()
   {
     // Subscribe to event fired when text object has been regenerated.
+    RefreshInfo();
     TMPro_EventManager.TEXT_CHANGED_EVENT.Add(ON_TEXT_CHANGED);
   }
 
   void OnDisable()
   {
     // UnSubscribe to event fired when text object has been regenerated.
-
     if (cachedLinkIndex != -1)
       DeselectLink(cachedLinkIndex);
     TMPro_EventManager.TEXT_CHANGED_EVENT.Remove(ON_TEXT_CHANGED);
+    m_TextMeshPro.text = originalText;
   }
 
 
@@ -97,12 +103,22 @@ public class LinkSelector : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
       link = "mailto:" + link;
     Application.OpenURL(link);
   }
-
+  public static Vector2 GetUnpivotedLocalPosition(RectTransform tr)
+  {
+    return new Vector2(tr.localPosition.x + tr.sizeDelta.x * (0.5f - tr.pivot.x), tr.localPosition.y + tr.sizeDelta.y * (0.5f - tr.pivot.y));
+  }
   void LateUpdate()
   {
     if (isHoveringObject)
     {
-      int linkIndex = TMP_TextUtilities.FindIntersectingLink(m_TextMeshPro, Input.mousePosition, m_Camera);
+      Vector3 mousePos = Input.mousePosition;
+      // Nasty fix for LayoutGroup objects and custom anchors
+      if (fixLayoutAnchorsBug)
+      {
+        mousePos += m_TextMeshPro.transform.TransformPoint(GetUnpivotedLocalPosition(m_TextMeshPro.GetComponent<RectTransform>())) - m_TextMeshPro.transform.position;
+      }
+      int linkIndex = TMP_TextUtilities.FindIntersectingLink(m_TextMeshPro, mousePos, m_Camera);
+      //SelectCharacter(TMP_TextUtilities.GetCursorIndexFromPosition(m_TextMeshPro, mousePos, m_Camera), Color.red);
       if (linkIndex != -1)
       {
         if (cachedLinkIndex != -1 && linkIndex != -1)
@@ -171,25 +187,79 @@ public class LinkSelector : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     m_TextMeshPro.UpdateVertexData(TMP_VertexDataUpdateFlags.All);
   }
 
-  void DeselectLink(int linkIndex)
+  void UnselectLink(int linkIndex, Color unselectCol)
   {
+    if (linkIndex == -1)
+    {
+      return;
+    }
+
+    cachedLinkIndex = linkIndex;
     TMP_LinkInfo linkInfo = m_TextMeshPro.textInfo.linkInfo[linkIndex];
     for (int i = linkInfo.linkTextfirstCharacterIndex; i < linkInfo.linkTextfirstCharacterIndex + linkInfo.linkTextLength; i++)
     {
-      RestoreCachedVertexAttributes(i);
+      //Debug.Log(i);
+      int meshIndex = m_TextMeshPro.textInfo.characterInfo[i].materialReferenceIndex;
+
+      int vertexIndex = m_TextMeshPro.textInfo.characterInfo[i].vertexIndex;
+      if (i != 0 && vertexIndex == 0)
+      {
+        continue;
+      }
+      //Debug.Log(i + " " + meshIndex + " " + vertexIndex);
+      // Get a reference to the vertex color
+      Color32[] vertexColors = m_TextMeshPro.textInfo.meshInfo[meshIndex].colors32;
+
+      Color32 c = unselectCol;
+      //m_TextMeshPro.textInfo.characterInfo[i].underlineColor = c;
+
+      vertexColors[vertexIndex + 0] = c;
+      vertexColors[vertexIndex + 1] = c;
+      vertexColors[vertexIndex + 2] = c;
+      vertexColors[vertexIndex + 3] = c;
+
     }
+    //for some reasons the first character in the text is selected as well, need to "fix" it
+    //RestoreCachedVertexAttributes(0);
+    m_TextMeshPro.UpdateVertexData(TMP_VertexDataUpdateFlags.All);
+  }
+
+  void SelectCharacter(int i, Color selectCol)
+  {
+    int meshIndex = m_TextMeshPro.textInfo.characterInfo[i].materialReferenceIndex;
+
+    int vertexIndex = m_TextMeshPro.textInfo.characterInfo[i].vertexIndex;
+    if (i != 0 && vertexIndex == 0)
+    {
+      return;
+    }
+    //Debug.Log(i + " " + meshIndex + " " + vertexIndex);
+    // Get a reference to the vertex color
+    Color32[] vertexColors = m_TextMeshPro.textInfo.meshInfo[meshIndex].colors32;
+
+    Color32 c = selectCol;
+    //m_TextMeshPro.textInfo.characterInfo[i].underlineColor = c;
+
+    vertexColors[vertexIndex + 0] = c;
+    vertexColors[vertexIndex + 1] = c;
+    vertexColors[vertexIndex + 2] = c;
+    vertexColors[vertexIndex + 3] = c;
+    m_TextMeshPro.UpdateVertexData(TMP_VertexDataUpdateFlags.All);
+  }
+
+  void DeselectLink(int linkIndex)
+  {
+    UnselectLink(linkIndex, linkColor);
     cachedLinkIndex = -1;
   }
   public void OnPointerEnter(PointerEventData eventData)
   {
-    //Debug.Log("OnPointerEnter()");
     isHoveringObject = true;
   }
 
 
   public void OnPointerExit(PointerEventData eventData)
   {
-    //Debug.Log("OnPointerExit()");
     isHoveringObject = false;
   }
 

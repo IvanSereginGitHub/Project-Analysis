@@ -8,10 +8,4 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SongAnalysis.unity
     guid: f94d0ff5feabb7947a1f10d52a261f4c
-  - enabled: 0
-    path: Assets/Scenes/SampleScene.unity
-    guid: 9fc0d4010bbf28b4594072e72b8655ab
-  - enabled: 0
-    path: Assets/Scenes/SkyboxScene.unity
-    guid: eaa4bae940260224e9474e0deca7a497
   m_configObjects: {}

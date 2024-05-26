@@ -61,6 +61,7 @@ public class CameraController : MonoBehaviour
         {
             cam.transform.position = followObject.transform.position + followOffset;
         }
+
         if (Input.GetMouseButtonDown(0))
         {
             if (IsPointerOverObject())
@@ -85,7 +86,7 @@ public class CameraController : MonoBehaviour
         {
             return;
         }
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButton(0) && Input.touchCount < 2)
         {
             cam.transform.position += middleClickPos - cam.ScreenToWorldPoint(Input.mousePosition);
             if (Input.GetMouseButtonDown(1))
@@ -95,17 +96,7 @@ public class CameraController : MonoBehaviour
                 middleClickPos = cam.ScreenToWorldPoint(Input.mousePosition);
             }
         }
-
-        if (Input.mouseScrollDelta.y > 0)
-        {
-            ChangeCameraSize(-1);
-        }
-        else if (Input.mouseScrollDelta.y < 0)
-        {
-            ChangeCameraSize(1);
-        }
-
-        if (Input.touchCount == 2)
+        else if (Input.touchCount == 2)
         {
             Vector2 touch0, touch1;
             float distance;
@@ -124,6 +115,15 @@ public class CameraController : MonoBehaviour
             }
 
             previousDistance = distance;
+        }
+
+        if (Input.mouseScrollDelta.y > 0)
+        {
+            ChangeCameraSize(-1);
+        }
+        else if (Input.mouseScrollDelta.y < 0)
+        {
+            ChangeCameraSize(1);
         }
     }
 }

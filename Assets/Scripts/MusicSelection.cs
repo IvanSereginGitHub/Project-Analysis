@@ -91,7 +91,7 @@ public class MusicSelection : MonoBehaviour
   public GameObject snippetSpectrumPrefab;
   bool didPauseMainAudSource = false;
   public AudioAnalyzer audAnalyzer;
-  private void Awake()
+  private void Start()
   {
     fadeIn = FadeSong(null, 0, 0);
     fadeOut = FadeSong(null, 0, 0);
@@ -137,7 +137,9 @@ public class MusicSelection : MonoBehaviour
       StartCoroutine(LoadAndApplySongFromPath(PlayerPrefs.GetString("recentMusic")));
     }
   }
-
+  public void ChangeAudioPitch(float value){
+    audSource.pitch = value;
+  }
   public void ChangeStreamingSetting(bool toggle)
   {
     streamingAudio = toggle;

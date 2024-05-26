@@ -57,8 +57,8 @@ public class AudioAnalyzer : MonoBehaviour
   float spectogramDefaultWidth = 1024, spectogramDefaultHeight = 1024; // Стандартные размеры текстуры спектрограммы
   [Range(1, 4)]
   public int spectrogramWidthMultiplier, spectrogramHeightMultiplier; // Множители, увеличивающие размер спектрограммы.
-  [Range(1, 10)]
-  public int subThreadsAmount = 5; // Количество потоков, способное заниматься вычислением спектрограммы
+  public bool fixDualChannel = true; // Исправление изображения спектрограммы для некоторых двухканальных аудиофайлов
+  public bool stretchTexture = true; // Применить растягивание результатов на всю ширину текстуры? (в состоянии false занимает только половину текстуры/четверь текстуры с включенной настройкой fixDualChannel)  
   [SerializeField]
   List<GameObject> spectogramSettings = new List<GameObject>();
   [Header("SPECTRUM SETTINGS")]
@@ -122,7 +122,14 @@ public class AudioAnalyzer : MonoBehaviour
   {
     spectrogramHeightMultiplier = (int)val;
   }
-
+  public void ChangeSpectrogramFixDualChannels(bool toggle)
+  {
+    fixDualChannel = toggle;
+  }
+  public void ChangeSpectrogramStretchTexture(bool toggle)
+  {
+    stretchTexture = toggle;
+  }
   public void ChangeSpectrogramMultiply(float val)
   {
     spectrogramMultiply = val;
@@ -219,19 +226,36 @@ public class AudioAnalyzer : MonoBehaviour
   {
     return gradient.Evaluate((float)value);
   }
-  // Функция для создания спектрограммы
-  public Color32[] GenerateSpectrogram(int width, int height, float[] samples, int subthreadsAmount = 10, bool convertToDb = false, bool fixDualChannel = true)
+  // 
+  /// <summary>
+  /// Функция для создания спектрограммы
+  /// </summary>
+  /// <param name="width">Длина текстуры</param>
+  /// <param name="height">Ширина текстуры</param>
+  /// <param name="samples">Массив семплов</param>
+  /// <param name="convertToDb">Изменяет тип громкости на децибелы</param>
+  /// <param name="fixDualChannel">Исправление текстуры при использовании двух каналов</param>
+  /// <param name="stretchTexture">Растягивание текстуры на всю высоту</param>
+  /// <returns></returns>
+  public Color32[] GenerateSpectrogram(int width, int height, float[] samples, bool stereoAudio = true, bool convertToDb = false, bool fixDualChannel = true, bool stretchTexture = true)
   {
     int numFrames = samples.Length / width;
+    int sizeMultiplier = 1;
+    if (stereoAudio)
+      sizeMultiplier = 2;
+    if (fixDualChannel)
+      sizeMultiplier *= 2;
     Color32[] pixels = new Color32[width * height];
     float[] frame = new float[height];
 
-    double[] magnitudes = new double[height / 2];
-    if (fixDualChannel)
-      magnitudes = new double[height / 4];
-
+    double[] magnitudes = new double[height / sizeMultiplier];
+    if (!stretchTexture)
+    {
+      sizeMultiplier = 1;
+    }
     for (int x = 0; x < width; x++)
     {
+      int count = 0;
       int offset = x * numFrames;
 
       for (int j = 0; j < height; j++)
@@ -247,9 +271,16 @@ public class AudioAnalyzer : MonoBehaviour
         if (convertToDb)
           magnitudes[l] = 20 * Math.Log10(magnitudes[l]) + spectrogramDBOffset; // convert to db incase needed
         float intensity = (float)magnitudes[l] * spectrogramMultiply;
+        for (int m = 1; m <= sizeMultiplier; m++)
+        {
+          //Debug.LogObjects("size", l, "max_size", magnitudes.Length, "width", x, "height", count * width, "index", x + count * width, "max_size", pixels.Length);
+          pixels[x + count * width] = spectrogramGradient.Evaluate(intensity);
+          count++;
+        }
 
-        pixels[x + l * width] = spectrogramGradient.Evaluate(intensity);
       }
+      // if (x >= 100)
+      //   return pixels;
     }
     return pixels;
   }
@@ -463,7 +494,7 @@ public class AudioAnalyzer : MonoBehaviour
         PushNewLine(ref output, "generating spectrogram using FFT");
         // 3. Строится спектрограмма и результат записывается в текстуру
         StartStopwatch_current(timer);
-        colorsArr = GenerateSpectrogram(tex_width, tex_heigth, totalSamples);
+        colorsArr = GenerateSpectrogram(tex_width, tex_heigth, totalSamples, true, false, fixDualChannel, stretchTexture);
         PushNewLine(ref output, "done generating spectrogram using FFT | execution time:", StopStopwatch(timer));
         // 4. Строится волновое представление сэмплов и результат записывается в текстуру
         // StartStopwatch(timer);
