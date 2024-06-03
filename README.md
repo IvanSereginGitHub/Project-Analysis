@@ -1,5 +1,5 @@
-# Project Beat
-Project Beat is a crossplatform tool for analyzing different properties of audiofiles and exporting those results.
+# Project Analysis
+Project Analysis is a crossplatform tool for analyzing different properties of audiofiles and exporting those results.
 
 > [!CAUTION]
 > This tool is by default integrated with another tool called "Prompts" for advanced UI interactions.
@@ -22,7 +22,7 @@ Project Beat is a crossplatform tool for analyzing different properties of audio
 1. Download Unity 2022.3.20f1
    * Any other version might work, but I personally don't recommend using any version below Unity 2020 LTS
 2. Download this tool via `Code > Download Zip`
-   * (or directly via `git clone https://github.com/IvanSereginGitHub/Project-Beat`)
+   * (or directly via `git clone https://github.com/IvanSereginGitHub/Project-Analysis`)
 3. Add project to Unity Hub and launch it
    * (or open directly from already launched editor via `File > Open Project`)
 4. Open `Scenes > SongAnalysis.scene` in Project Explorer
@@ -31,6 +31,6 @@ Project Beat is a crossplatform tool for analyzing different properties of audio
 
 
 # What's next?
-## Project Beat Extended
-Project Beat Extended is an upcoming paid tool, containing different components for realtime/preanalyzed data usage.
-Please visit [Project Beat Extended](https://github.com/IvanSereginGitHub/Project-Beat-Extended) for more info.
+## Project Analysis Extended
+Project Analysis Extended is an upcoming paid tool, containing different components for realtime/preanalyzed data usage.
+Please visit [Project Analysis Extended](https://github.com/IvanSereginGitHub/Project-Analysis-Extended) for more info.
