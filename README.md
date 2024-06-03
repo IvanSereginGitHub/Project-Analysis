@@ -1,14 +1,8 @@
-# Project Beat
-Project Beat is a crossplatform tool for analyzing different properties of audiofiles and exporting those results.
+# Project Analysis
+Project Analysis is a crossplatform tool for analyzing different properties of audiofiles and exporting those results.
 
-> [!CAUTION]
-> This tool is by default integrated with another tool called "Prompts" for advanced UI interactions.
-> 
-> This repository **DOES NOT** contain it. See [Prompts](https://github.com/IvanSereginGitHub/Prompts) for more info.
->
->
-> See [this branch](https://github.com/IvanSereginGitHub/Project-Beat-3D/tree/prompts-less) for version without integration. Most features of main branch would not be available.
-
+[![ru]([https://img.shields.io/badge/lang-ru-green.svg)](https://github.com/IvanSereginGitHub/Project-Analysis/blob/main/README.ru.md)
+[![en]([https://img.shields.io/badge/lang-en-red.svg)](https://github.com/IvanSereginGitHub/Project-Analysis/blob/main/README.md)
  
 > [!IMPORTANT]
 > While analysis itself is indeed crossplatform (and only file format depending), as well as Unity Runtime module (which runs this tool) - you would need to install platform-specific file browsers and modify existing file "SelectFiles.cs" in order to search, add to local folder or simply read audiofiles via native platform browser.
@@ -22,7 +16,7 @@ Project Beat is a crossplatform tool for analyzing different properties of audio
 1. Download Unity 2022.3.20f1
    * Any other version might work, but I personally don't recommend using any version below Unity 2020 LTS
 2. Download this tool via `Code > Download Zip`
-   * (or directly via `git clone https://github.com/IvanSereginGitHub/Project-Beat`)
+   * (or directly via `git clone https://github.com/IvanSereginGitHub/Project-Analysis`)
 3. Add project to Unity Hub and launch it
    * (or open directly from already launched editor via `File > Open Project`)
 4. Open `Scenes > SongAnalysis.scene` in Project Explorer
@@ -31,6 +25,6 @@ Project Beat is a crossplatform tool for analyzing different properties of audio
 
 
 # What's next?
-## Project Beat Extended
-Project Beat Extended is an upcoming paid tool, containing different components for realtime/preanalyzed data usage.
-Please visit [Project Beat Extended](https://github.com/IvanSereginGitHub/Project-Beat-Extended) for more info.
+## Project Analysis Extended
+Project Analysis Extended is an upcoming paid tool, containing different components for realtime/preanalyzed data usage.
+Please visit [Project Analysis Extended](https://github.com/IvanSereginGitHub/Project-Analysis-Extended) for more info.
