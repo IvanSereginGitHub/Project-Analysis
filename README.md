@@ -1,14 +1,5 @@
 # Project Analysis
 Project Analysis is a crossplatform tool for analyzing different properties of audiofiles and exporting those results.
-
-> [!CAUTION]
-> This tool is by default integrated with another tool called "Prompts" for advanced UI interactions.
-> 
-> This repository **DOES NOT** contain it. See [Prompts](https://github.com/IvanSereginGitHub/Prompts) for more info.
->
->
-> See [this branch](https://github.com/IvanSereginGitHub/Project-Beat-3D/tree/prompts-less) for version without integration. Most features of main branch would not be available.
-
  
 > [!IMPORTANT]
 > While analysis itself is indeed crossplatform (and only file format depending), as well as Unity Runtime module (which runs this tool) - you would need to install platform-specific file browsers and modify existing file "SelectFiles.cs" in order to search, add to local folder or simply read audiofiles via native platform browser.
