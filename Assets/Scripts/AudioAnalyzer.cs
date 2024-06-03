@@ -324,8 +324,6 @@ public class AudioAnalyzer : MonoBehaviour
         }
 
       }
-      // if (x >= 100)
-      //   return pixels;
     }
     return pixels;
   }
@@ -542,9 +540,9 @@ public class AudioAnalyzer : MonoBehaviour
         colorsArr = GenerateSpectrogram(tex_width, tex_heigth, totalSamples, true, false, spectrogram_fixDualChannel, spectrogram_stretchTexture);
         PushNewLine(ref output, "done generating spectrogram using FFT | execution time:", StopStopwatch(timer));
         // 4. Строится волновое представление сэмплов и результат записывается в текстуру
-        // StartStopwatch(timer);
-        // colorsSpectrumArr = DrawWave(specTex_width, specText_height, totalSamples);
-        // Debug.LogObjects("done drawing wave, execution time:", StopStopwatch(timer));
+        StartStopwatch(timer);
+        colorsSpectrumArr = DrawWave(specTex_width, specText_height, totalSamples);
+        Debug.LogObjects("done drawing wave, execution time:", StopStopwatch(timer));
         PushNewLine(ref output, "analyzing segments");
         // 5. Производится анализ сегментов и результат записывается в массив
         StartStopwatch_current(timer);

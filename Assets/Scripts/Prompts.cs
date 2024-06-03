@@ -26,13 +26,6 @@ public class Prompt
     /// A specific structure for instantiating and configuring prepared objects.
     /// </summary>
     public List<IEventInterface> additionalObjects = new List<IEventInterface>();
-    //public enum PromptType
-    //{
-    //    Normal,
-    //    YesOnly,
-    //    ExitOnly,
-    //    StrictPanel
-    //}
     public PromptType promptType = PromptType.Normal;
     public float openingTime = 0, closingTime = 0;
     public bool closeOnBgClick = true;
@@ -41,7 +34,7 @@ public class Prompt
     /// </summary>
     public bool keepAlive = false;
     /// <summary>
-    /// Contains generated panel. Don't know why I did call it like that :/
+    /// Contains generated panel.
     /// </summary>
     public GameObject associatedPrefab;
     public PromptPanel promptPanel;
