@@ -1,6 +1,6 @@
 # Project Analysis
 Project Analysis is a crossplatform tool for analyzing different properties of audiofiles and exporting those results.
-
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/jonatasemidio/multilanguage-readme-pattern/blob/master/README.md)
 [![ru]([https://img.shields.io/badge/lang-ru-green.svg)](https://github.com/IvanSereginGitHub/Project-Analysis/blob/main/README.ru.md)
 [![en]([https://img.shields.io/badge/lang-en-red.svg)](https://github.com/IvanSereginGitHub/Project-Analysis/blob/main/README.md)
  
