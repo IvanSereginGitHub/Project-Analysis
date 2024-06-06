@@ -1,3 +1,6 @@
+[OUTDATED]
+
+
 This is a prompt-less version of [Project Beat](https://github.com/IvanSereginGitHub/Project-Beat-3D)
 
 
