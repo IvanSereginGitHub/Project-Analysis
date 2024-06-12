@@ -11,6 +11,7 @@ using System.Threading;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Net.Http;
+using vanIvan.Prompts;
 
 [Serializable]
 public class SpectrumObjects
