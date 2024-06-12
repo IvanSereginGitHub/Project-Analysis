@@ -3,7 +3,9 @@ Project Analysis is a crossplatform tool for analyzing different properties of a
 
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](https://github.com/IvanSereginGitHub/Project-Analysis/blob/main/README.ru.md)
 [![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/IvanSereginGitHub/Project-Analysis/blob/main/README.md)
- 
+
+
+This package automatically comes with https://github.com/IvanSereginGitHub/Prompts as submodule. Read more about submodules and how to fetch them here: https://github.blog/2016-02-01-working-with-submodules.
 > [!IMPORTANT]
 > While analysis itself is indeed crossplatform (and only file format depending), as well as Unity Runtime module (which runs this tool) - you would need to install platform-specific file browsers and modify existing file "SelectFiles.cs" in order to search, add to local folder or simply read audiofiles via native platform browser.
 > 
