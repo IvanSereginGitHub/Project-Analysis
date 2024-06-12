@@ -24,7 +24,8 @@ This package automatically comes with https://github.com/IvanSereginGitHub/Promp
 4. Open `Scenes > SongAnalysis.scene` in Project Explorer
 5. Use inside of editor or build via `File > Build Settings` for your platform
 
-
+# Additional resources, used in here
+... (to be announced)
 
 # What's next?
 ## Project Analysis Extended
