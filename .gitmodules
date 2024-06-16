@@ -1,0 +1,6 @@
+[submodule "Assets/Prompts"]
+	path = Assets/Prompts
+	url = https://github.com/IvanSereginGitHub/Prompts
+[submodule "Prompts"]
+	path = Prompts
+	url = https://github.com/IvanSereginGitHub/Prompts

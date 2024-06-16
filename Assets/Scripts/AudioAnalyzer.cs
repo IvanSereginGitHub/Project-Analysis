@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using vanIvan.Prompts;
 
 [System.AttributeUsage(System.AttributeTargets.Class |
                        System.AttributeTargets.Struct | System.AttributeTargets.Field)

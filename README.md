@@ -3,7 +3,9 @@ Project Analysis is a crossplatform tool for analyzing different properties of a
 
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](https://github.com/IvanSereginGitHub/Project-Analysis/blob/main/README.ru.md)
 [![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/IvanSereginGitHub/Project-Analysis/blob/main/README.md)
- 
+
+
+This package automatically comes with https://github.com/IvanSereginGitHub/Prompts as submodule. Read more about submodules and how to fetch them here: https://github.blog/2016-02-01-working-with-submodules.
 > [!IMPORTANT]
 > While analysis itself is indeed crossplatform (and only file format depending), as well as Unity Runtime module (which runs this tool) - you would need to install platform-specific file browsers and modify existing file "SelectFiles.cs" in order to search, add to local folder or simply read audiofiles via native platform browser.
 > 
@@ -22,7 +24,10 @@ Project Analysis is a crossplatform tool for analyzing different properties of a
 4. Open `Scenes > SongAnalysis.scene` in Project Explorer
 5. Use inside of editor or build via `File > Build Settings` for your platform
 
-
+# Additional resources, used in here 
+Textures, materials and most of the other assets are developed by me (Ivan Seregin) and are also shared with MIT License. 
+Additional resources:
+... (to be announced)
 
 # What's next?
 ## Project Analysis Extended
