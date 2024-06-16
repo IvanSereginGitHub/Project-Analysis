@@ -138,7 +138,8 @@ public class MusicSelection : MonoBehaviour
       StartCoroutine(LoadAndApplySongFromPath(PlayerPrefs.GetString("recentMusic")));
     }
   }
-  public void ChangeAudioPitch(float value){
+  public void ChangeAudioPitch(float value)
+  {
     audSource.pitch = value;
   }
   public void ChangeStreamingSetting(bool toggle)
@@ -646,6 +647,24 @@ public class MusicSelection : MonoBehaviour
     callback.Invoke();
   }
 
+  public void ApplyLoadedAudioInfo(AudioClip myClip, string path = null)
+  {
+    path ??= myClip.name;
+    string fileName = Path.GetFileName(path)/*path.IndexOf(musicPath) != -1 ? path.Substring(path.IndexOf(musicPath) + musicPath.Length) : */;
+    string songName = Path.GetFileNameWithoutExtension(path);
+    string author = "";
+    if (fileName.Contains("_"))
+    {
+      songName = fileName.Substring(0, fileName.IndexOf("_"));
+      author = Path.GetFileNameWithoutExtension(fileName.Replace(songName + "_", ""));
+    }
+    audSource.clip = myClip;
+    //audManager.offset = 0;
+    audSource.clip.name = songName + "_" + author;
+    //audManager.offset = 0;
+    RefreshSceneInfo();
+  }
+
   public IEnumerator LoadAndApplySongFromPath(string path, bool saveAsRecent = true)
   {
     AudioClip myClip = null;
@@ -693,19 +712,7 @@ public class MusicSelection : MonoBehaviour
     {
       yield break;
     }
-    string fileName = Path.GetFileName(path)/*path.IndexOf(musicPath) != -1 ? path.Substring(path.IndexOf(musicPath) + musicPath.Length) : */;
-    string songName = Path.GetFileNameWithoutExtension(path);
-    string author = "";
-    if (fileName.Contains("_"))
-    {
-      songName = fileName.Substring(0, fileName.IndexOf("_"));
-      author = Path.GetFileNameWithoutExtension(fileName.Replace(songName + "_", ""));
-    }
-    audSource.clip = myClip;
-    //audManager.offset = 0;
-    audSource.clip.name = songName + "_" + author;
-    //audManager.offset = 0;
-    RefreshSceneInfo();
+    ApplyLoadedAudioInfo(myClip, path);
     if (saveAsRecent)
       PlayerPrefs.SetString("recentMusic", path.Replace("file://", ""));
   }
