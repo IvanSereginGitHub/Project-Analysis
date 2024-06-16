@@ -74,8 +74,6 @@ public class AudioAnalyzer : MonoBehaviour
   public bool segmenter_progressiveSegmentsFinding = false;
 
   float splitProgress = 0f, analysisProgress = 0f;
-  [SerializeField]
-  List<GameObject> analysisSettings = new List<GameObject>();
   Prompt analysisOptionsPrompt, spectrogramOptionsPrompt, spectrumOptionsPrompt, waveformOptionsPrompt;
   [Header("SPECTROGRAM SETTINGS")]
   public RawImage spectrogramTexture;
@@ -88,6 +86,7 @@ public class AudioAnalyzer : MonoBehaviour
   float spectrogramDBOffset; // Коэффициенты, влияющие на яркость графика
   [SerializeField]
   float spectogramDefaultWidth = 1024;
+  [SerializeField]
   float spectogramDefaultHeight = 1024; // Стандартные размеры текстуры спектрограммы
   [Range(1, 4)]
   [FieldInformation("Множитель длины спектрограммы", "Множитель, увеличивающий длину полученной спектрограммы. Улучшает качество финального изображения.")]
@@ -99,13 +98,9 @@ public class AudioAnalyzer : MonoBehaviour
   public bool spectrogram_fixDualChannel = true; // Исправление изображения спектрограммы для некоторых двухканальных аудиофайлов
   [FieldInformation("Растянуть спектрограмму", "Применить растягивание результатов на всю ширину текстуры (в состоянии false занимает только половину текстуры/четверь текстуры с включенной настройкой fixDualChannel).")]
   public bool spectrogram_stretchTexture = true; // Применить растягивание результатов на всю ширину текстуры? (в состоянии false занимает только половину текстуры/четверь текстуры с включенной настройкой fixDualChannel)  
-  [SerializeField]
-  List<GameObject> spectogramSettings = new List<GameObject>();
   [Header("SPECTRUM SETTINGS")]
-  public List<GameObject> spectrumSettings = new List<GameObject>();
   public RawImage spectrumTexture;
   [Header("WAVEFORM SETTINGS")]
-  public List<GameObject> waveformSettings = new List<GameObject>();
   [SerializeField]
 
   float waveformDefaultWidth = 1024;
@@ -116,49 +111,6 @@ public class AudioAnalyzer : MonoBehaviour
   public int waveformWidthMultiplier;
 
   public int waveformHeightMultiplier; // Множители, увеличивающие размер звуковой волны
-  public void Start()
-  {
-    analysisOptionsPrompt = new Prompt(PromptType.ExitOnly)
-    {
-      promptText = "Настройки анализа сегментов:"
-    };
-    Prompts.PreparePrompt(analysisOptionsPrompt, true);
-    foreach (var obj in analysisSettings)
-    {
-      analysisOptionsPrompt.PlaceGameobjectInside(obj);
-    }
-
-    spectrogramOptionsPrompt = new Prompt(PromptType.ExitOnly)
-    {
-      promptText = "Настройки спектрограммы:"
-    };
-    Prompts.PreparePrompt(spectrogramOptionsPrompt, true);
-    foreach (var obj in spectogramSettings)
-    {
-      spectrogramOptionsPrompt.PlaceGameobjectInside(obj);
-    }
-
-    waveformOptionsPrompt = new Prompt(PromptType.ExitOnly)
-    {
-      promptText = "Настройки звуковой волны:"
-    };
-    Prompts.PreparePrompt(waveformOptionsPrompt, true);
-    foreach (var obj in waveformSettings)
-    {
-      waveformOptionsPrompt.PlaceGameobjectInside(obj);
-    }
-
-
-    spectrumOptionsPrompt = new Prompt(PromptType.ExitOnly)
-    {
-      promptText = "Настройки графика спектральной функции:"
-    };
-    Prompts.PreparePrompt(spectrumOptionsPrompt, true);
-    foreach (var obj in spectrumSettings)
-    {
-      spectrumOptionsPrompt.PlaceGameobjectInside(obj);
-    }
-  }
 
   public void ChangeSpectrogramWidth(float val)
   {
@@ -505,9 +457,9 @@ public class AudioAnalyzer : MonoBehaviour
     analysisProgress = 0f;
     hideOnLoadingImage.enabled = false;
     int stored_sample_length = segmenter_segmentsSampleLength;
-
+    Debug.LogObjects(spectogramDefaultWidth, spectrogram_WidthMultiplier);
     spectrogramTexture.rectTransform.sizeDelta = new UnityEngine.Vector2(spectogramDefaultWidth * spectrogram_WidthMultiplier, spectogramDefaultHeight * spectrogram_HeightMultiplier);
-    // Debug.LogObjects((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height);
+    Debug.LogObjects((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height);
     Texture2D specTex = new Texture2D((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
     Texture2D spectrumTex = new Texture2D((int)spectrumTexture.rectTransform.rect.width, (int)spectrumTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
     Color32[] colorsArr = new Color32[0];
