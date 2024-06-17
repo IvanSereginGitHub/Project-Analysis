@@ -7,8 +7,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
-using PathCreation;
-using PathCreation.Examples;
 
 [System.Serializable]
 class SongTimeEvent<T>
@@ -35,8 +33,6 @@ public class AudioManager : MonoBehaviour
     public float sensitivity = 0.2f;
     public int samplesPerThread = 10000;
     private ConcurrentQueue<string> logMessages = new ConcurrentQueue<string>();
-    public PathCreator pathCreator;
-    public RoadMeshCreator roadMeshCreator;
     public int pathCreatorPointsOffset = 50;
     public float pathCreatorPointsMultiplier = 0.5f;
     public float pathCreatorTurnTreshold = 50f;
@@ -122,14 +118,6 @@ public class AudioManager : MonoBehaviour
             sum += Math.Max(0, spectrum[i] - prevSpectrum[i]);
         }
         return sum;
-    }
-
-    BezierPath GeneratePath(Vector3[] points, bool closedPath)
-    {
-        // Create a closed, 2D bezier path from the supplied points array
-        // These points are treated as anchors, which the path will pass through
-        // The control points for the path will be generated automatically
-        return new BezierPath(points, closedPath, PathSpace.xyz);
     }
 
     public List<float> DetectIntensityChanges(List<double> spectralFlux, double changeThreshold, int totalSamplesLength)
