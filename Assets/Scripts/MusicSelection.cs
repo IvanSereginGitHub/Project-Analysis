@@ -47,8 +47,7 @@ public class MusicSelection : MonoBehaviour
   public bool blockAllCommunications = true;
   //persistentdatapath + "/_music/"
   // private AudioManager audManager;
-  [SerializeField]
-  private AudioSource audSource, snippetAudSource;
+  public AudioSource audSource, snippetAudSource;
   //public TextAsset readmeMusic;
   public float[] samples = new float[64];
   private float[] spectrum = new float[0];

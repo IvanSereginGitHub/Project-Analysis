@@ -96,21 +96,19 @@ public class AudioAnalyzer : MonoBehaviour
   public int spectrogram_HeightMultiplier; // Множители, увеличивающие размер спектрограммы.
   [FieldInformation("Исправление стерео", "Исправление изображения спектрограммы для некоторых двухканальных аудиофайлов.\nПри отключении этой настройки изображение спектрограммы может быть отзеркалено.")]
   public bool spectrogram_fixDualChannel = true; // Исправление изображения спектрограммы для некоторых двухканальных аудиофайлов
-  [FieldInformation("Растянуть спектрограмму", "Применить растягивание результатов на всю ширину текстуры (в состоянии false занимает только половину текстуры/четверь текстуры с включенной настройкой fixDualChannel).")]
+  [FieldInformation("Растянуть спектрограмму", "Применить растягивание результатов на всю ширину текстуры (в выключенном состоянии занимает только половину текстуры или четверь текстуры с включенной настройкой fixDualChannel).")]
   public bool spectrogram_stretchTexture = true; // Применить растягивание результатов на всю ширину текстуры? (в состоянии false занимает только половину текстуры/четверь текстуры с включенной настройкой fixDualChannel)  
   [Header("SPECTRUM SETTINGS")]
   public RawImage spectrumTexture;
   [Header("WAVEFORM SETTINGS")]
-  [SerializeField]
-
-  float waveformDefaultWidth = 1024;
-
-  float waveformDefaultHeight = 1024; // Стандартные размеры текстуры звуковой волны
-  [Range(1, 8)]
-
-  public int waveformWidthMultiplier;
-
-  public int waveformHeightMultiplier; // Множители, увеличивающие размер звуковой волны
+  [FieldInformation("Точность графика звуковой волны", "Количество семплов, значения которых будут усреднены для отображения на графике.")]
+  public int waveform_samplesCountAsPoint = 100;
+  [FieldInformation("Дальность расположения точек", "Число пикселей, которые обозначают дистанцию на графике между двумя предыдущими значениями звуковой волны.")]
+  public int waveform_pointsPixelDistance = 5;
+  [FieldInformation("Использовать соединительные линии", "Определяет, нужно ли на графике соединять точки прямыми линиями.")]
+  public bool waveform_connectWithLines = true;
+  [FieldInformation("Оптимизация отображения", "<b><color=yellow>Глобальная настройка</color></b><br><br>Отключает отрисовку и игнорирует вычисления положения элементов, которые не видны на экране.<br><br>Данная настройка также позволяет изменять динамически размер и точность изображений на текстурах в зависимости от приближения камеры для улучшения производительности приложения.")]
+  public bool optimizeView = false; // TODO
 
   public void ChangeSpectrogramWidth(float val)
   {

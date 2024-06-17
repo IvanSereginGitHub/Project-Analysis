@@ -41,6 +41,7 @@ public class AudioRecorder : MonoBehaviour
     }
     public void StartRecording(string customDevice = null)
     {
+        musicSelection.ToggleAudSourceStatus(musicSelection.audSource);
         recorderPrompt.Show();
         Microphone.GetDeviceCaps(customDevice, out int min, out int max);
         audSource.clip = Microphone.Start(customDevice, false, recordingLength, min);
@@ -60,7 +61,6 @@ public class AudioRecorder : MonoBehaviour
         Microphone.GetDeviceCaps(customDevice, out int min, out int max);
         var data_arr = new float[Microphone.GetPosition(customDevice)];
         audSource.clip.GetData(data_arr, 0);
-        Debug.Log(data_arr.Length);
         Microphone.End(null);
         var clip = AudioClip.Create(audSource.clip.name, data_arr.Length, 1, min, false);
         clip.SetData(data_arr, 0);
