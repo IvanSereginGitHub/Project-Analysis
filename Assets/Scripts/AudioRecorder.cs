@@ -41,7 +41,7 @@ public class AudioRecorder : MonoBehaviour
     }
     public void StartRecording(string customDevice = null)
     {
-        musicSelection.ToggleAudSourceStatus(musicSelection.audSource);
+        musicSelection.audSource.Pause();
         recorderPrompt.Show();
         Microphone.GetDeviceCaps(customDevice, out int min, out int max);
         audSource.clip = Microphone.Start(customDevice, false, recordingLength, min);

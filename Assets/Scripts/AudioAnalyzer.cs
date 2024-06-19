@@ -2,12 +2,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UI;
 using vanIvan.Prompts;
@@ -147,12 +149,32 @@ public class AudioAnalyzer : MonoBehaviour
 
   public void ExportTextureToFile(RawImage tex)
   {
-    selectFiles.SaveFile((tex.texture as Texture2D).EncodeToPNG(), $"{audSource.clip.name}_spectrogram.png");
+    selectFiles.SaveFile((tex.texture as Texture2D).EncodeToPNG(), $"{audSource.clip.name}.png");
   }
 
   public void ExportJSONToFile(string text)
   {
-    selectFiles.SaveFile(text, "export.json");
+    selectFiles.SaveFile(text, $"{audSource.clip.name}.json");
+  }
+
+  public void ExportJSONToFile()
+  {
+    selectFiles.SaveFile(segments_str, $"{audSource.clip.name}.json");
+  }
+
+  string segments_str = "";
+
+  public void SegmentsArrayToJSON()
+  {
+    segments_str = "[";
+    int count = 1;
+    segments.ForEach((val) => { segments_str += $"\n\t{{\n\t\t\"id\": {count},\n\t\t\"position\": {val.ToString(CultureInfo.InvariantCulture)},\n\t}},"; count++; });
+    segments_str += "\n]";
+  }
+
+  public void ExportJSONToFile(Text text)
+  {
+    selectFiles.SaveFile(text.text, $"{audSource.clip.name}.json");
   }
 
   // Функция, занимающаяся разделением массива семплов на окна и вычисляющая их среднее значение
@@ -455,18 +477,16 @@ public class AudioAnalyzer : MonoBehaviour
     analysisProgress = 0f;
     hideOnLoadingImage.enabled = false;
     int stored_sample_length = segmenter_segmentsSampleLength;
-    Debug.LogObjects(spectogramDefaultWidth, spectrogram_WidthMultiplier);
     spectrogramTexture.rectTransform.sizeDelta = new UnityEngine.Vector2(spectogramDefaultWidth * spectrogram_WidthMultiplier, spectogramDefaultHeight * spectrogram_HeightMultiplier);
-    Debug.LogObjects((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height);
     Texture2D specTex = new Texture2D((int)spectrogramTexture.rectTransform.rect.width, (int)spectrogramTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
-    Texture2D spectrumTex = new Texture2D((int)spectrumTexture.rectTransform.rect.width, (int)spectrumTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
+    int specTex_width = totalSamples.Length / waveform_samplesCountAsPoint;
+
     Color32[] colorsArr = new Color32[0];
     Color32[] colorsSpectrumArr = new Color32[0];
     int tex_width = specTex.width;
     int tex_heigth = specTex.height;
-    int specTex_width = spectrumTex.width;
-    int specText_height = spectrumTex.height;
 
+    int specText_height = (int)spectrumTexture.rectTransform.rect.height;
     string catched_error = "";
     string result_path = Path.Combine(Application.persistentDataPath, "analysis_result.txt");
 
@@ -475,6 +495,10 @@ public class AudioAnalyzer : MonoBehaviour
       string output = "";
       try
       {
+        if (specTex_width > 16384)
+        {
+          throw new Exception("texture is too large!");
+        }
         PushNewLine(ref output, "started analysis");
         Stopwatch totalTimer = new Stopwatch();
         StartStopwatch_current(totalTimer);
@@ -492,8 +516,8 @@ public class AudioAnalyzer : MonoBehaviour
         PushNewLine(ref output, "done generating spectrogram using FFT | execution time:", StopStopwatch(timer));
         // 4. Строится волновое представление сэмплов и результат записывается в текстуру
         StartStopwatch(timer);
-        colorsSpectrumArr = DrawWave(specTex_width, specText_height, totalSamples);
-        Debug.LogObjects("done drawing wave, execution time:", StopStopwatch(timer));
+        colorsSpectrumArr = DrawWave(specTex_width, specText_height, waveform_samplesCountAsPoint, totalSamples);
+        PushNewLine(ref output, "done drawing wave, execution time:", StopStopwatch(timer));
         PushNewLine(ref output, "analyzing segments");
         // 5. Производится анализ сегментов и результат записывается в массив
         StartStopwatch_current(timer);
@@ -534,14 +558,18 @@ public class AudioAnalyzer : MonoBehaviour
       loadingImage.fillAmount = 0;
       yield break;
     }
+    SegmentsArrayToJSON();
     // 6. Применяются изменения
-
+    Texture2D spectrumTex = new Texture2D(specTex_width, (int)spectrumTexture.rectTransform.rect.height, TextureFormat.RGBA32, false);
     // spectrumTex.SetPixels32(colorsSpectrumArr);
     // spectrumTex.Apply();
     specTex.SetPixels32(colorsArr);
     specTex.Apply();
+    spectrumTex.SetPixels32(colorsSpectrumArr);
+    spectrumTex.Apply();
     spectrogramTexture.texture = specTex;
-    // spectrumTexture.texture = spectrumTex;
+    spectrumTexture.rectTransform.sizeDelta = new UnityEngine.Vector2(specTex_width, specText_height);
+    spectrumTexture.texture = spectrumTex;
     hideOnLoadingImage.enabled = true;
     splitProgress = 0f;
     analysisProgress = 0f;
@@ -550,17 +578,13 @@ public class AudioAnalyzer : MonoBehaviour
   }
 
   // Функция для отрисовки волнового представления аудиофайла
-  public Color32[] DrawWave(int textureWidth, int textureHeight, float[] samples)
+  public Color32[] DrawWave(int textureWidth, int textureHeight, int samplesDistance, float[] samples)
   {
     Color32[] pixels = new Color32[textureWidth * textureHeight];
     for (int x = 0; x < textureWidth; x++)
     {
-      for (int y = 0; y < textureHeight; y++)
-      {
-        float intensity = samples[x];
-
-        pixels[x + y * textureWidth] = intensity > 0.5 ? Color.white : Color.clear;
-      }
+      int pos = (int)(textureHeight * ((samples.Skip(x * samplesDistance).Take(samplesDistance).Average() + 1f) / 2));
+      pixels[x + pos * textureWidth] = Color.white;
     }
 
     return pixels;
