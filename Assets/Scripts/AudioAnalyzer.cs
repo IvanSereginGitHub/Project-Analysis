@@ -9,7 +9,6 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
-using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UI;
 using vanIvan.Prompts;
@@ -105,10 +104,10 @@ public class AudioAnalyzer : MonoBehaviour
   [Header("WAVEFORM SETTINGS")]
   [FieldInformation("Точность графика звуковой волны", "Количество семплов, значения которых будут усреднены для отображения на графике.")]
   public int waveform_samplesCountAsPoint = 100;
-  [FieldInformation("Дальность расположения точек", "Число пикселей, которые обозначают дистанцию на графике между двумя предыдущими значениями звуковой волны.")]
-  public int waveform_pointsPixelDistance = 5;
-  [FieldInformation("Использовать соединительные линии", "Определяет, нужно ли на графике соединять точки прямыми линиями.")]
-  public bool waveform_connectWithLines = true;
+  // [FieldInformation("Дальность расположения точек", "Число пикселей, которые обозначают дистанцию на графике между двумя предыдущими значениями звуковой волны.")]
+  // public int waveform_pointsPixelDistance = 5;
+  // [FieldInformation("Использовать соединительные линии", "Определяет, нужно ли на графике соединять точки прямыми линиями.")]
+  // public bool waveform_connectWithLines = true;
   [FieldInformation("Оптимизация отображения", "<b><color=yellow>Глобальная настройка</color></b><br><br>Отключает отрисовку и игнорирует вычисления положения элементов, которые не видны на экране.<br><br>Данная настройка также позволяет изменять динамически размер и точность изображений на текстурах в зависимости от приближения камеры для улучшения производительности приложения.")]
   public bool optimizeView = false; // TODO
 

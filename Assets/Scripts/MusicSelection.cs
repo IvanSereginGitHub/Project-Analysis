@@ -109,7 +109,7 @@ public class MusicSelection : MonoBehaviour
     specManager.prefab = snippetSpectrumPrefab;
     specManager.audSource = snippetAudSource;
     specManager.prefParent = specManager.transform;
-    specManager.spectrum_beatCount = 64;
+    specManager.beatCount = 64;
     specManager.spectrum_sizeMultiplier = 7;
     specManager.defaultWidthMultiplier = 0.025f;
     specManager.endPosition = 2f;

@@ -10,7 +10,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
     public Transform prefParent;
     public AudioSource audSource;
     [FieldInformation("Количество сэмплов*", "Изменение количества сэмплов для графика по-умолчанию. Чем меньше значение - тем крупнее элементы графика.<br><br>* - Требуется пересоздание для применения изменений.")]
-    public int spectrum_beatCount = 64;
+    public int beatCount = 64;
     public int changeIndexBy = 0;
     public float changeIndexTime = 0;
     [FieldInformation("Множитель размера", "Изменение множителя чувствительности значений для графика.")]
@@ -18,7 +18,7 @@ public class SpectrumVizualizerManager : MonoBehaviour
     public float defaultWidthMultiplier = 1, endPosition, startPosition;
     public int countMultiplier = 0;
     [FieldInformation("Дистанция между элементами*", "Количество условных единиц мира, между которыми будут находится два соседних элемента.<br><br>* - Требуется пересоздание для применения изменений, значение по умолчанию: |startPosition - endPosition| / spectrum_beatCount.")]
-    public float spectrum_distance = 0;
+    public float distance = 0;
     float[] samples = new float[1024];
     Transform[] objects = new Transform[0];
 
@@ -33,10 +33,10 @@ public class SpectrumVizualizerManager : MonoBehaviour
     {
         if (countMultiplier == 0)
         {
-            countMultiplier = 1024 / spectrum_beatCount;
+            countMultiplier = 1024 / beatCount;
         }
-        if (spectrum_distance == 0)
-            spectrum_distance = Math.Abs(startPosition - endPosition) / spectrum_beatCount;
+        if (distance == 0)
+            distance = Math.Abs(startPosition - endPosition) / beatCount;
         ClearArray();
         FillArray();
         if (!useInverseSamples)
@@ -61,11 +61,11 @@ public class SpectrumVizualizerManager : MonoBehaviour
 
     void FillArray()
     {
-        objects = new Transform[spectrum_beatCount];
+        objects = new Transform[beatCount];
         for (int i = 0; i < objects.Length; i++)
         {
             objects[i] = Instantiate(prefab, prefParent).transform;
-            objects[i].localPosition = new Vector3(startPosition + spectrum_distance * i, 0, 0);
+            objects[i].localPosition = new Vector3(startPosition + distance * i, 0, 0);
             objects[i].localScale = new Vector2(5, 5);
         }
     }

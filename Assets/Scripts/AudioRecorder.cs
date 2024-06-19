@@ -29,7 +29,7 @@ public class AudioRecorder : MonoBehaviour
         specManager.prefab = spectrumPrefab;
         specManager.audSource = audSource;
         specManager.prefParent = specManager.transform;
-        specManager.spectrum_beatCount = 64;
+        specManager.beatCount = 64;
         specManager.spectrum_sizeMultiplier = 7;
         specManager.defaultWidthMultiplier = 0.025f;
         specManager.endPosition = 2f;
